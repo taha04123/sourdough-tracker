@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0d1117"/>
+<title>🍞 Sourdough Bulk Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0d1117;
+  --card:#161b27;
+  --hdr:#1e2738;
+  --inp:#0d1117;
+  --bdr:#2d3a50;
+  --accent:#4f9eff;
+  --ok:#3dd68c;
+  --warn:#f0a050;
+  --danger:#ef5050;
+  --text:#e6edf3;
+  --muted:#6e7f96;
+  --yellow:#facc15;
+  --purple:#a78bfa;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  min-height:100vh;
+  padding-bottom:100px;
+  font-size:15px;
+  -webkit-text-size-adjust:100%;
+}
+
+.wrap{max-width:600px;margin:0 auto;padding:20px 20px 0;}
+
+.app-title{font-size:1.45rem;font-weight:700;color:var(--accent);margin-bottom:3px;}
+.app-sub{color:var(--muted);font-size:0.7rem;font-family:monospace;margin-bottom:16px;}
+
+/* ── Collapsible Sections ── */
+.sec{background:var(--card);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+
+.sec-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;background:var(--hdr);cursor:pointer;
+  user-select:none;-webkit-tap-highlight-color:transparent;
+  border-left:3px solid var(--sec-color,var(--accent));gap:8px;
+}
+.sec-hd:active{filter:brightness(1.15);}
+
+.sec-hd-l{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.sec-icon{font-size:1rem;flex-shrink:0;}
+.sec-title{font-size:0.9rem;font-weight:600;color:var(--text);flex-shrink:0;}
+.sec-sum{font-size:0.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.chev{color:var(--muted);font-size:0.75rem;flex-shrink:0;transition:transform 0.3s ease;}
+.chev.open{transform:rotate(180deg);}
+
+.sec-body{max-height:0;overflow:hidden;transition:max-height 0.35s ease;}
+.sec-body.open{max-height:5000px;}
+.sec-pad{padding:16px;}
+
+/* ── Labels & Inputs ── */
+label{
+  font-size:0.68rem;color:var(--muted);display:block;
+  margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;
+}
+
+input[type=text],input[type=number],input[type=date],select{
+  background:var(--inp);border:1px solid var(--bdr);border-radius:8px;
+  color:var(--text);padding:0 12px;height:48px;
+  font-family:system-ui,-apple-system,sans-serif;font-size:0.95rem;
+  width:100%;display:block;-webkit-appearance:none;appearance:none;
+}
+
+input.mono{font-family:monospace;}
+
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e7f96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;
+}
+
+textarea{
+  background:var(--inp);border:1px solid var(--bdr);border-radius:8px;
+  color:var(--text);padding:12px;font-family:system-ui,-apple-system,sans-serif;
+  font-size:0.9rem;width:100%;resize:vertical;-webkit-appearance:none;
+}
+
+/* ── Field rows ── */
+.frow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.frow:last-child{margin-bottom:0;}
+.frow>*{flex:1;min-width:120px;}
+.frow.nowrap{flex-wrap:nowrap;}
+.frow.nowrap>*{min-width:0;}
+
+/* ── Buttons ── */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  font-family:system-ui,-apple-system,sans-serif;cursor:pointer;
+  border-radius:10px;padding:0 18px;height:48px;
+  font-weight:600;border:none;font-size:0.9rem;
+  white-space:nowrap;-webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+.btn:active{opacity:0.75;}
+
+.btn-save{background:var(--ok);color:#0d1117;}
+.btn-new{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+.btn-load{background:#2d3a50;color:var(--text);}
+.btn-del{background:transparent;color:var(--danger);border:1.5px solid var(--danger);}
+.btn-sec{height:48px;font-size:0.85rem;padding:0 16px;border-radius:8px;background:#2d3a50;color:var(--text);white-space:nowrap;}
+
+.btn-add{
+  background:var(--accent);color:#0d1117;
+  height:56px;font-size:1.05rem;width:100%;
+  border-radius:12px;font-weight:700;margin-top:12px;
+  border:none;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;-webkit-tap-highlight-color:transparent;
+}
+.btn-add:active{opacity:0.8;}
+
+.btn-reset{
+  background:transparent;color:var(--danger);border:1.5px solid var(--danger);
+  height:48px;font-size:0.9rem;width:100%;border-radius:10px;
+  font-weight:600;cursor:pointer;display:none;margin-top:8px;
+  font-family:system-ui,-apple-system,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ── Pill buttons (+10m / +30m) ── */
+.pill-row{display:flex;gap:8px;margin-bottom:0;}
+.pill{
+  display:flex;align-items:center;justify-content:center;
+  font-family:system-ui,-apple-system,sans-serif;cursor:pointer;
+  border-radius:24px;height:48px;font-weight:600;border:none;
+  font-size:0.9rem;background:#2d3a50;color:var(--text);flex:1;
+  -webkit-tap-highlight-color:transparent;
+}
+.pill:active{background:#3a4a62;}
+
+/* ── Stat cards (vertical stack) ── */
+.stat-row{display:flex;flex-direction:column;gap:8px;}
+.stat{background:var(--bg);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;}
+.stat-l{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;}
+.stat-v{font-size:1.4rem;font-weight:700;}
+
+/* ── Log grid (3 cols) ── */
+.log-grid{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;font-size:0.78rem;align-items:center;}
+.lh{color:var(--muted);font-weight:600;font-size:0.68rem;text-transform:uppercase;}
+
+/* ── Rise bar ── */
+.rise-bar-bg{background:var(--bg);border-radius:6px;height:20px;overflow:hidden;flex:1;min-width:80px;}
+.rise-bar-fill{height:100%;border-radius:6px;transition:width 0.4s;}
+
+/* ── Env notes ── */
+#envNotes{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+#envLogDisplay{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+
+/* ── Chart ── */
+#chartWrap{position:relative;height:240px;}
+
+/* ── Toast — bottom, full width on mobile ── */
+#toast{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  background:var(--hdr);border:1px solid var(--bdr);border-radius:12px;
+  padding:14px 20px;font-family:system-ui,-apple-system,sans-serif;
+  font-size:1rem;z-index:9999;opacity:0;transition:opacity 0.3s;
+  pointer-events:none;width:calc(100% - 40px);max-width:560px;text-align:center;
+}
+
+.empty{text-align:center;color:#2d3a50;padding:60px 0;font-size:0.9rem;}
+#saveStatus{font-size:0.78rem;margin-top:4px;}
+
+/* ── Dough Calculator button ── */
+.calc-open{
+  width:100%;height:48px;margin-bottom:10px;
+  background:linear-gradient(135deg,#a78bfa,#7c6ff0);
+  color:#0d1117;font-weight:700;font-size:0.95rem;border:none;
+  border-radius:12px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;
+  font-family:system-ui,-apple-system,sans-serif;
+}
+.calc-open:active{opacity:0.85;}
+
+/* ── Dough Calculator modal ── */
+.calc-ov{
+  position:fixed;inset:0;background:rgba(0,0,0,0.78);
+  display:none;align-items:flex-start;justify-content:center;
+  z-index:10000;padding:16px 10px;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.calc-ov.open{display:flex;}
+.calc-md{
+  background:var(--card);border:1px solid var(--bdr);border-radius:14px;
+  width:100%;max-width:760px;display:flex;flex-direction:column;
+  max-height:calc(100vh - 32px);overflow:hidden;
+}
+.calc-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;background:var(--hdr);
+  border-left:3px solid var(--purple);flex-shrink:0;
+}
+.calc-hd-t{font-size:0.95rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
+.calc-x{
+  background:transparent;border:none;color:var(--text);
+  font-size:1.3rem;cursor:pointer;width:44px;height:44px;
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;flex-shrink:0;
+}
+.calc-x:active{background:rgba(255,255,255,0.08);}
+.calc-tb{display:flex;background:var(--bg);flex-shrink:0;}
+.calc-tab{
+  flex:1;height:48px;background:var(--hdr);color:var(--muted);
+  border:none;cursor:pointer;font-weight:600;font-size:0.85rem;
+  font-family:inherit;border-bottom:3px solid transparent;
+  -webkit-tap-highlight-color:transparent;display:flex;
+  align-items:center;justify-content:center;gap:6px;min-width:0;
+}
+.calc-tab.active{color:var(--text);border-bottom-color:var(--accent);background:var(--card);}
+.calc-bd{overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;flex:1;min-height:0;}
+.calc-sh{
+  font-size:0.7rem;color:var(--accent);text-transform:uppercase;
+  letter-spacing:0.06em;font-weight:700;margin:14px 0 8px;
+}
+.calc-sh:first-child{margin-top:0;}
+.calc-r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.calc-r-np{display:grid;grid-template-columns:1fr 90px;gap:8px;margin-bottom:8px;}
+.calc-r-np>*{min-width:0;}
+.calc-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:4px;}
+@media(min-width:700px){.calc-grid.panels{grid-template-columns:1fr 1fr 1fr;}}
+.calc-pn{
+  background:var(--bg);border:1px solid var(--bdr);border-radius:10px;
+  padding:12px;min-width:0;overflow:hidden;
+}
+.calc-pn-t{
+  font-size:0.72rem;color:var(--accent);text-transform:uppercase;
+  letter-spacing:0.05em;font-weight:700;margin-bottom:10px;
+}
+.calc-pn-sh{
+  font-size:0.65rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:0.05em;font-weight:600;margin:10px 0 6px;
+}
+.calc-pn-sh:first-child{margin-top:0;}
+.calc-ing{
+  display:grid;grid-template-columns:1fr 46px 70px;gap:4px 8px;
+  font-size:0.8rem;padding:5px 0;border-bottom:1px dashed #1e2738;
+  align-items:baseline;
+}
+.calc-ing:last-child{border-bottom:none;}
+.calc-ing-n{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.calc-ing-p{color:var(--muted);font-family:monospace;font-size:0.7rem;text-align:right;}
+.calc-ing-w{color:var(--ok);font-family:monospace;font-weight:600;text-align:right;font-size:0.82rem;}
+.calc-ing.tot{border-top:1px solid var(--bdr);border-bottom:none;margin-top:4px;padding-top:7px;}
+.calc-ing.tot .calc-ing-n{color:var(--accent);font-weight:700;}
+.calc-ing.tot .calc-ing-w{color:var(--accent);}
+.calc-big{
+  font-size:2.1rem;font-weight:700;color:var(--accent);font-family:monospace;
+  text-align:center;padding:16px 12px;background:var(--bg);
+  border:1px solid var(--bdr);border-radius:10px;margin:4px 0 12px;
+  word-break:break-word;
+}
+.calc-note{font-size:0.78rem;color:var(--muted);line-height:1.5;margin:6px 0;}
+.calc-note.warn{color:var(--warn);}
+.calc-note.info{color:var(--accent);}
+.calc-ol{font-size:0.8rem;color:var(--text);line-height:1.55;margin:4px 0;padding-left:20px;}
+.calc-ol li{margin-bottom:5px;}
+
+/* ── Shared helpers ── */
+.x-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;line-height:1;font-size:1.1rem;padding:2px 4px;-webkit-tap-highlight-color:transparent;}
+.x-btn.pad{padding:4px 6px;}
+.box{border-radius:8px;padding:10px 14px;margin-top:4px;}
+.box.warn{background:#2a1200;border:1px solid #f0a050;color:#f0a050;font-size:0.78rem;}
+.box.err{background:#1a0808;border:1px solid #ef5050;color:#ef5050;font-size:0.78rem;}
+.box.caution{background:#1a1800;border:1px solid #facc15;color:#facc15;font-size:0.78rem;margin-top:10px;}
+.box.hybrid{background:#12192a;border:1px solid var(--bdr);color:#a78bfa;}
+.box.poke{background:#12192a;border:1px solid var(--bdr);padding:12px 14px;font-size:0.85rem;}
+.mono-f{font-family:monospace;}
+.env-row{font-size:0.78rem;color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.env-hd{font-size:0.68rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;}
+.note-row{font-size:0.8rem;display:flex;gap:8px;line-height:1.4;}
+.rise-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.rise-big{font-size:2rem;font-weight:700;line-height:1;}
+.rise-sub{font-size:0.7rem;color:var(--muted);margin-top:6px;}
+.target-ln{font-size:0.78rem;margin-bottom:8px;}
+.target-val{color:#facc15;font-size:1rem;}
+.log-tm{font-family:monospace;}
+.log-tm-d{color:var(--muted);font-size:0.68rem;}
+.log-pr{color:var(--muted);font-size:0.72rem;}
+.log-cell{display:flex;align-items:center;justify-content:space-between;gap:4px;}
+.proof-hd{font-size:0.8rem;margin-bottom:12px;font-weight:600;}
+.proof-list{display:flex;flex-direction:column;gap:9px;font-size:0.85rem;line-height:1.5;}
+
+/* ── New feature styles (mobile-first) ── */
+#mixCard input[type=number]{width:100%;height:48px;border-radius:6px;}
+#mixWaterOut{font-size:2rem;font-weight:700;line-height:1.2;border-radius:8px;}
+#mixWaterNote{min-height:48px;display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:6px;font-size:0.9rem;}
+#driftBanner .box{width:100%;min-height:48px;display:flex;align-items:center;padding:12px 14px;border-radius:8px;font-size:0.85rem;}
+
+#foldCard input[type=number],#foldCard select{height:48px;width:100%;border-radius:6px;}
+#foldCountdown{font-size:3.2rem;font-weight:700;text-align:center;font-family:ui-monospace,Menlo,monospace;letter-spacing:3px;line-height:1.1;}
+#foldDots span{width:32px !important;height:32px !important;margin:0 6px !important;border-width:2px !important;}
+#foldBanner > div{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;padding:12px 14px;border-radius:8px;font-size:0.95rem;font-weight:600;text-align:center;}
+#foldStartBtn,#foldResetBtn{height:48px;border-radius:6px;font-weight:600;flex:1;}
+
+#calcLearn{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
+#calcLearn table{min-width:360px;width:100%;}
+#calcLearn th,#calcLearn td{height:44px;min-height:44px;padding:0 10px;text-align:left;}
+#calcLearn .corrBox{font-size:0.9rem;padding:14px;border-radius:8px;background:#1a2332;text-align:center;margin-top:12px;}
+#calcLearn .corrBox b{font-size:1.35rem;font-weight:700;color:#4f9eff;}
+#applyCorrBtn{width:100%;height:48px;border-radius:6px;margin-top:10px;font-weight:600;}
+
+#advisorOut > div{width:100%;padding:12px;margin-bottom:10px;border-radius:8px;border-left:3px solid currentColor;font-size:0.85rem;}
+
+#planOv input[type=number],#planOv input[type=text],#planOv input[type=date],#planOv input[type=time],#planOv select{height:48px;width:100%;border-radius:6px;}
+#planTimeline .step-row{display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 12px;border-radius:6px;}
+#planTimeline .step-row.current{background:#1e3a5f;font-weight:700;color:#e6edf3;}
+#planTimeline .step-row.past{color:#475569;}
+#planTimeline .step-row.future{color:#e6edf3;}
+#planTimeline .step-icon{font-size:1.15rem;flex-shrink:0;}
+#planTimeline .step-label{flex:1;font-size:0.88rem;min-width:0;}
+#planTimeline .step-time{font-family:ui-monospace,Menlo,monospace;font-size:0.85rem;white-space:nowrap;flex-shrink:0;}
+#planCopyBtn{width:100%;height:48px;border-radius:6px;font-weight:600;margin-top:10px;}
+
+#calcOv input[type=number],#calcOv input[type=text],#calcOv input[type=date],#calcOv input[type=time],#calcOv select{height:48px;width:100%;border-radius:6px;}
+#calcOv .calc-tab,#calcTab-recipe,#calcTab-water,#calcTab-advisor{height:48px;flex:1;}
+
+@media (max-width:500px){
+  #planOv .calc-r2,#calcOv .calc-r2{grid-template-columns:1fr;}
+  .calc-grid,.calc-grid.panels{grid-template-columns:1fr !important;}
+}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- ── Bake Planner Modal ── -->
+<div class="calc-ov" id="planOv" onclick="if(event.target.id==='planOv')closePlanner()">
+  <div class="calc-md" role="dialog" aria-modal="true">
+    <div class="calc-hd">
+      <div class="calc-hd-t">🗓️ Bake Planner</div>
+      <button class="calc-x" onclick="closePlanner()" aria-label="Close">✕</button>
+    </div>
+    <div class="calc-bd">
+      <div class="calc-sh">When do you want to eat?</div>
+      <div class="calc-r2">
+        <div><label>Date</label><input type="date" id="planEatDate"/></div>
+        <div><label>Time</label><input type="time" id="planEatTime"/></div>
+      </div>
+      <div class="calc-sh">Recipe parameters</div>
+      <div class="calc-r2">
+        <div><label>Proofing Method</label>
+          <select id="planColdRetard">
+            <option value="yes">Cold retard (fridge)</option>
+            <option value="no">Room temp proof</option>
+          </select>
+        </div>
+        <div><label>Desired Dough Temp (°C)</label><input type="number" step="0.1" id="planDesired" value="25"/></div>
+      </div>
+      <div class="calc-r2">
+        <div><label>Starter %</label>
+          <select id="planStarterPct">
+            <option value="5">5%</option><option value="10">10%</option>
+            <option value="15">15%</option><option value="20" selected>20%</option>
+          </select>
+        </div>
+        <div><label>Cold retard hours</label><input type="number" step="0.5" min="8" max="16" id="planColdDur" value="12"/></div>
+      </div>
+      <div class="calc-r2">
+        <div><label>Baking time (min)</label><input type="number" id="planBakeTime" value="45"/></div>
+        <div><label>Oven preheat (min)</label><input type="number" id="planPreheat" value="45"/></div>
+      </div>
+      <div class="calc-sh">Schedule</div>
+      <div id="planTimeline" style="padding:10px 0"></div>
+      <button class="btn btn-primary" id="planCopyBtn" style="width:100%;margin-top:10px">📋 Copy schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Dough Calculator Modal ── -->
+<div class="calc-ov" id="calcOv" onclick="if(event.target.id==='calcOv')closeCalc()">
+  <div class="calc-md" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+    <div class="calc-hd">
+      <div class="calc-hd-t" id="calcTitle">🧮 Dough Calculator</div>
+      <button class="calc-x" onclick="closeCalc()" aria-label="Close">✕</button>
+    </div>
+    <div class="calc-tb">
+      <button class="calc-tab active" id="calcTab-recipe" onclick="switchCalcTab('recipe')">📐 Recipe</button>
+      <button class="calc-tab" id="calcTab-water" onclick="switchCalcTab('water')">🌡️ Water Temp</button>
+      <button class="calc-tab" id="calcTab-advisor" onclick="switchCalcTab('advisor')">💡 Advisor</button>
+    </div>
+    <div class="calc-bd">
+
+      <!-- Recipe tab -->
+      <div id="calcPane-recipe">
+        <div class="calc-sh">Dough Parameters</div>
+        <div class="calc-r2">
+          <div><label>Target Weight (g)</label><input type="number" step="1" id="c_target" value="800"/></div>
+          <div><label>Scale Factor</label><input type="number" step="0.1" id="c_scale" value="1.0"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label>Levain %</label><input type="number" step="0.1" id="c_levainPct" value="20"/></div>
+          <div><label>Water %</label><input type="number" step="0.1" id="c_waterPct" value="80"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label>Salt %</label><input type="number" step="0.1" id="c_saltPct" value="2.0"/></div>
+          <div></div>
+        </div>
+
+        <div class="calc-sh">Flours</div>
+        <div class="calc-r-np">
+          <input type="text" id="c_f1n" value="Strong white flour" placeholder="Flour 1 name"/>
+          <input type="number" step="0.1" id="c_f1p" value="90" placeholder="%"/>
+        </div>
+        <div class="calc-r-np">
+          <input type="text" id="c_f2n" value="Flour 2" placeholder="Flour 2 name"/>
+          <input type="number" step="0.1" id="c_f2p" value="10" placeholder="%"/>
+        </div>
+        <div class="calc-r-np">
+          <input type="text" id="c_f3n" value="Flour 3" placeholder="Flour 3 name"/>
+          <input type="number" step="0.1" id="c_f3p" value="0" placeholder="%"/>
+        </div>
+
+        <div class="calc-sh">Inclusions</div>
+        <div class="calc-r-np">
+          <input type="text" id="c_i1n" value="" placeholder="Inclusion 1 name"/>
+          <input type="number" step="0.1" id="c_i1p" value="0" placeholder="%"/>
+        </div>
+        <div class="calc-r-np">
+          <input type="text" id="c_i2n" value="" placeholder="Inclusion 2 name"/>
+          <input type="number" step="0.1" id="c_i2p" value="0" placeholder="%"/>
+        </div>
+        <div class="calc-r-np">
+          <input type="text" id="c_i3n" value="" placeholder="Inclusion 3 name"/>
+          <input type="number" step="0.1" id="c_i3p" value="0" placeholder="%"/>
+        </div>
+
+        <div class="calc-sh">Results</div>
+        <div class="calc-grid panels" id="calcResults"></div>
+      </div>
+
+      <!-- Water temp tab -->
+      <div id="calcPane-water" style="display:none">
+        <div class="calc-sh">Desired Dough Temperature Calculator</div>
+        <div class="calc-r2">
+          <div><label>Desired Dough Temp (°C)</label><input type="number" step="0.1" id="c_wtDesired" value="25"/></div>
+          <div><label>Friction Factor (°C)</label><input type="number" step="0.1" id="c_wtFriction" value="0"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label>Levain / Starter Temp (°C)</label><input type="number" step="0.1" id="c_wtLevain"/></div>
+          <div><label>Flour Temp (°C)</label><input type="number" step="0.1" id="c_wtFlour"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label>Room Temp (°C)</label><input type="number" step="0.1" id="c_wtRoom"/></div>
+          <div></div>
+        </div>
+
+        <div class="calc-sh">Water Temperature</div>
+        <div class="calc-big" id="calcWaterOut">— °C</div>
+        <div id="calcWaterNote"></div>
+
+        <div class="calc-sh">Instructions</div>
+        <ol class="calc-ol">
+          <li>Enter your desired dough temperature.</li>
+          <li>Enter levain, flour and room temperatures.</li>
+          <li>Bowl friction is heat added by mechanical mixing — set to 0 for gentle hand mixing.</li>
+          <li>Mix your water to the calculated temperature.</li>
+        </ol>
+        <div class="calc-note">Friction factor: difference between dough temp before and after intensive mixing. Leave at 0 for gentle hand mixing.</div>
+
+        <div class="calc-sh">Learn from my bakes</div>
+        <div id="calcLearn"></div>
+      </div>
+
+      <!-- Advisor tab -->
+      <div id="calcPane-advisor" style="display:none">
+        <div class="calc-sh">Recipe Advisor</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:10px">Live advice based on your recipe + environment data.</div>
+        <div id="advisorOut"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="wrap">
+  <div class="app-title">🍞 Sourdough Bulk Tracker</div>
+  <p class="app-sub">Bulk-O-Matic · Dough Temping Guide 2024 · Low &amp; Slow · <span style="color:#2d3a50">v6</span></p>
+
+  <button class="calc-open" onclick="openCalc()">🧮 Dough Calculator</button>
+  <button class="calc-open" style="background:linear-gradient(135deg,#3dd68c,#2aa872);margin-top:-2px" onclick="openPlanner()">🗓️ Bake Planner</button>
+
+  <!-- Session -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#4f9eff" onclick="toggleSec('session')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">📋</span>
+        <span class="sec-title">Session</span>
+        <span class="sec-sum" id="sum-session"></span>
+      </div>
+      <span class="chev" id="chev-session">▼</span>
+    </div>
+    <div class="sec-body" id="body-session">
+      <div class="sec-pad">
+        <div class="frow">
+          <div><label>Date</label><input type="date" id="sessionDate"/></div>
+          <div><label>Name</label><input type="text" id="sessionName" placeholder="e.g. Rye loaf"/></div>
+        </div>
+        <div class="frow">
+          <button class="btn btn-save" id="saveBtn">💾 Save</button>
+          <button class="btn btn-new" id="newBtn">＋ New</button>
+        </div>
+        <div id="saveStatus"></div>
+        <div style="margin-top:12px">
+          <label>Load Session</label>
+          <select id="sessionList"><option value="">— saved sessions —</option></select>
+        </div>
+        <div class="frow" style="margin-top:10px">
+          <button class="btn btn-load" id="loadBtn">📂 Load</button>
+          <button class="btn btn-del" id="deleteBtn">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#3dd68c" onclick="toggleSec('setup')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">⚙️</span>
+        <span class="sec-title">Setup</span>
+        <span class="sec-sum" id="sum-setup"></span>
+      </div>
+      <span class="chev open" id="chev-setup">▼</span>
+    </div>
+    <div class="sec-body open" id="body-setup">
+      <div class="sec-pad">
+        <div class="frow">
+          <div>
+            <label>BF Start Time <span style="color:var(--muted);font-size:0.65rem">(when starter added)</span></label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="text" id="bfStart" placeholder="HH:MM" maxlength="5" class="mono" style="width:110px"/>
+              <button class="pill" id="bfNowBtn" type="button">Now</button>
+            </div>
+          </div>
+          <div>
+            <label>Starter %</label>
+            <select id="starterPct">
+              <option value="5">5%</option><option value="10">10%</option>
+              <option value="15">15%</option><option value="20" selected>20%</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label>Proofing Method</label>
+          <select id="coldRetard">
+            <option value="yes">Cold retard (fridge)</option>
+            <option value="no">Room temp proof — no fridge</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#f0a050" onclick="toggleSec('env')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">🌡️</span>
+        <span class="sec-title">Environment</span>
+        <span class="sec-sum" id="sum-env"></span>
+      </div>
+      <span class="chev" id="chev-env">▼</span>
+    </div>
+    <div class="sec-body" id="body-env">
+      <div class="sec-pad">
+        <div class="frow">
+          <div><label>Room Temp (°C)</label><input type="number" step="0.1" id="roomTemp" placeholder="e.g. 22"/></div>
+          <div><label>Humidity (%)</label><input type="number" step="1" id="humidity" placeholder="e.g. 65"/></div>
+        </div>
+        <div class="frow">
+          <div><label>Flour Temp (°C)</label><input type="number" step="0.1" id="flourTemp" placeholder="auto from 1st reading"/></div>
+          <div><label>Starter Temp (°C)</label><input type="number" step="0.1" id="starterTemp" placeholder="e.g. 24"/></div>
+        </div>
+        <div class="frow nowrap" style="align-items:flex-end">
+          <div style="flex:0 0 110px">
+            <label>Time of Change</label>
+            <input type="text" id="envTime" placeholder="HH:MM" maxlength="5" class="mono"/>
+          </div>
+          <button class="pill" id="envNowBtn" type="button">Now</button>
+          <button class="btn btn-sec" id="logEnvBtn">📝 Log env</button>
+        </div>
+        <div id="envNotes"></div>
+        <div id="envLogDisplay"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- % Rise Tracker -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#facc15" onclick="toggleSec('rise')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">📊</span>
+        <span class="sec-title">% Rise Tracker</span>
+        <span class="sec-sum" id="sum-rise"></span>
+      </div>
+      <span class="chev open" id="chev-rise">▼</span>
+    </div>
+    <div class="sec-body open" id="body-rise">
+      <div class="sec-pad">
+        <div class="frow">
+          <div><label>Flour Weight (g)</label><input type="number" step="1" id="flourWt" placeholder="e.g. 500"/></div>
+          <div><label>Start Vol (mL) <span style="color:var(--muted);font-size:0.65rem">override</span></label><input type="number" step="1" id="startVol" placeholder="or auto"/></div>
+        </div>
+        <div class="frow">
+          <div><label>Current Vol (mL)</label><input type="number" step="1" id="currentVol" placeholder="e.g. 900"/></div>
+          <div>
+            <label>Prev Bake Result</label>
+            <select id="prevBake">
+              <option value="0">Unknown / first bake</option>
+              <option value="10">Underproofed → +10%</option>
+              <option value="0s">Perfect ✓ no change</option>
+              <option value="-10">Overproofed → −10%</option>
+            </select>
+          </div>
+        </div>
+        <div id="risePanel" style="margin-top:4px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Reading -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#4f9eff" onclick="toggleSec('add')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">➕</span>
+        <span class="sec-title">Add Reading</span>
+        <span class="sec-sum" id="sum-add"></span>
+      </div>
+      <span class="chev open" id="chev-add">▼</span>
+    </div>
+    <div class="sec-body open" id="body-add">
+      <div class="sec-pad">
+        <div class="frow">
+          <div style="flex:0 0 auto">
+            <label>Time</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="text" id="timeIn" placeholder="HH:MM" maxlength="5" class="mono" style="width:90px"/>
+              <button class="pill" id="timeNowBtn" type="button">Now</button>
+            </div>
+          </div>
+          <div>
+            <label>Dough Temp (°C)</label>
+            <input type="number" step="0.1" id="tempIn" placeholder="e.g. 24.5"/>
+          </div>
+          <div style="flex:0 1 90px">
+            <label>Probe #</label>
+            <select id="probeIn"></select>
+          </div>
+        </div>
+        <div class="pill-row">
+          <button class="pill" id="plus10">+10m</button>
+          <button class="pill" id="plus30">+30m</button>
+        </div>
+        <button class="btn-add" id="addBtn">+ Add Reading</button>
+        <button class="btn-reset" id="resetBtn">Reset All Readings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mixing Assistant -->
+  <div class="sec" id="mixCard" style="display:none">
+    <div class="sec-hd" style="--sec-color:#4f9eff" onclick="toggleSec('mix')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">💧</span>
+        <span class="sec-title">Mixing Assistant</span>
+        <span class="sec-sum" id="sum-mix"></span>
+      </div>
+      <span class="chev open" id="chev-mix">▼</span>
+    </div>
+    <div class="sec-body open" id="body-mix">
+      <div class="sec-pad">
+        <div class="frow">
+          <div><label>Desired Dough Temp (°C)</label><input type="number" step="0.1" id="mixDesired" placeholder="e.g. 25"/></div>
+          <div><label>Friction Factor (°C)</label><input type="number" step="0.1" id="mixFriction" value="0"/></div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Pulls flour / room / starter temp from Environment</div>
+        <div style="font-size:0.8rem;margin-bottom:6px;color:var(--muted)">Required Water Temperature</div>
+        <div id="mixWaterOut" style="font-size:2.2rem;font-weight:700;text-align:center;padding:18px;border-radius:10px;background:#1a2332;color:var(--muted)">— °C</div>
+        <div id="mixWaterNote" style="margin-top:10px;text-align:center;font-size:0.8rem"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stretch & Fold Timer -->
+  <div class="sec" id="foldCard" style="display:none">
+    <div class="sec-hd" style="--sec-color:#a78bfa" onclick="toggleSec('fold')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">🤲</span>
+        <span class="sec-title">Stretch & Fold Timer</span>
+        <span class="sec-sum" id="sum-fold"></span>
+      </div>
+      <span class="chev open" id="chev-fold">▼</span>
+    </div>
+    <div class="sec-body open" id="body-fold">
+      <div class="sec-pad">
+        <div class="frow">
+          <div><label>Sets</label><input type="number" min="1" max="8" id="foldSets" value="4"/></div>
+          <div><label>Interval (min)</label>
+            <select id="foldInterval">
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="30" selected>30</option>
+              <option value="45">45</option>
+              <option value="60">60</option>
+            </select>
+          </div>
+        </div>
+        <div style="text-align:center;margin:14px 0">
+          <div id="foldStatus" style="font-size:0.9rem;color:var(--muted);margin-bottom:4px">Set 1 of 4</div>
+          <div id="foldCountdown" style="font-size:2.8rem;font-weight:700;font-family:monospace;letter-spacing:2px">--:--</div>
+          <div id="foldDots" style="margin-top:10px"></div>
+          <div id="foldBanner" style="margin-top:10px"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="foldStartBtn" style="flex:1">▶ Start</button>
+          <button class="btn btn-sec" id="foldResetBtn" style="flex:1">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estimate -->
+  <div class="sec" id="estCard" style="display:none">
+    <div class="sec-hd" style="--sec-color:#3dd68c" onclick="toggleSec('est')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">📈</span>
+        <span class="sec-title">Bulk Fermentation Estimate</span>
+        <span class="sec-sum" id="sum-est"></span>
+      </div>
+      <span class="chev open" id="chev-est">▼</span>
+    </div>
+    <div class="sec-body open" id="body-est">
+      <div class="sec-pad">
+        <div id="driftBanner"></div>
+        <div class="stat-row" id="estStats"></div>
+        <div id="estSource" style="margin-top:10px;font-size:0.68rem;color:var(--muted)"></div>
+        <div id="downstreamWarn"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="sec" id="chartCard" style="display:none">
+    <div class="sec-hd" style="--sec-color:#a78bfa" onclick="toggleSec('chart')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">📉</span>
+        <span class="sec-title">Temperature Chart</span>
+        <span class="sec-sum" id="sum-chart"></span>
+      </div>
+      <span class="chev" id="chev-chart">▼</span>
+    </div>
+    <div class="sec-body" id="body-chart">
+      <div class="sec-pad">
+        <div id="chartWrap"><canvas id="myChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="sec" id="logCard" style="display:none">
+    <div class="sec-hd" style="--sec-color:#6e7f96" onclick="toggleSec('log')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">📝</span>
+        <span class="sec-title">Log</span>
+        <span class="sec-sum" id="sum-log"></span>
+      </div>
+      <span class="chev" id="chev-log">▼</span>
+    </div>
+    <div class="sec-body" id="body-log">
+      <div class="sec-pad">
+        <div class="log-grid" id="logGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final Proofing Guide -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#f0a050" onclick="toggleSec('proof')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">🍞</span>
+        <span class="sec-title">Final Proofing Guide</span>
+        <span class="sec-sum" id="sum-proof"></span>
+      </div>
+      <span class="chev" id="chev-proof">▼</span>
+    </div>
+    <div class="sec-body" id="body-proof">
+      <div class="sec-pad" id="proofGuideBody"></div>
+    </div>
+  </div>
+
+  <!-- Bake Notes -->
+  <div class="sec">
+    <div class="sec-hd" style="--sec-color:#6e7f96" onclick="toggleSec('notes')">
+      <div class="sec-hd-l">
+        <span class="sec-icon">📓</span>
+        <span class="sec-title">Bake Notes</span>
+        <span class="sec-sum" id="sum-notes"></span>
+      </div>
+      <span class="chev" id="chev-notes">▼</span>
+    </div>
+    <div class="sec-body" id="body-notes">
+      <div class="sec-pad">
+        <textarea id="bakeNotes" rows="4" placeholder="Record crumb result (underproofed/perfect/overproofed), adjustments for next bake, observations..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty" id="emptyMsg">Set BF start time and starter %, fill in environment data, then add dough temperature readings</div>
+</div>
+
+<script>
+// Data
+const TEMPING=[
+  {t:25,h:6,r:40},{t:24.5,h:7,r:50},{t:24,h:7,r:50},{t:23,h:8,r:55},
+  {t:22.5,h:9,r:60},{t:22,h:10,r:65},{t:21.5,h:11,r:70},{t:21,h:12,r:75},
+  {t:20.5,h:13,r:80},{t:20,h:14,r:85},{t:19.5,h:15,r:90},{t:19,h:16,r:95},
+  {t:18,h:16.5,r:100}
+].sort((a,b)=>a.t-b.t);
+
+const LOW=[
+  [20,23,8.5,9.5],[15,23,10.5,11.5],[10,23,12.5,14],[5,23,14,15.5],
+  [20,22,10.5,11.5],[15,22,12.5,13.5],[10,22,14,15],[5,22,16.5,17.5],
+  [20,21,11.5,13],[15,21,13,15],[10,21,15,17],[5,21,17.5,19],
+  [20,20,12,14],[15,20,13.5,15.5],[10,20,15.5,17.5],[5,20,18,19.5],
+  [20,19,13,14.5],[15,19,14.5,16.5],[10,19,17,18.5],[5,19,18.5,20]
+];
+
+const COLORS=["#60a5fa","#34d399","#f97316","#a78bfa","#f472b6","#facc15",
+  "#fb7185","#2dd4bf","#818cf8","#a3e635","#f43f5e","#06b6d4",
+  "#d946ef","#84cc16","#f59e0b","#10b981","#6366f1","#ec4899","#14b8a6","#eab308"];
+
+// State
+let entries=[], envLog=[], myChart=null;
+
+$('probeIn').innerHTML=Array.from({length:20},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'</option>').join('');
+
+// Helpers
+function $(id){return document.getElementById(id);}
+function val(id){const el=$(id);return el?el.value:'';}
+function gn(id){const el=$(id);if(!el||el.value==='')return null;return+el.value;}
+function toMins(s){if(!s||!s.includes(':'))return null;const[h,m]=s.split(':').map(Number);return(isNaN(h)||isNaN(m))?null:h*60+m;}
+function toHHMM(m){const t=Math.round(m),h=Math.floor(((t%1440)+1440)%1440/60),mn=((t%60)+60)%60;return String(h).padStart(2,'0')+':'+String(mn).padStart(2,'0');}
+function xLbl(m){const h=Math.floor(Math.abs(m)/60),mn=Math.abs(m)%60;return h>0?(mn?h+'h'+mn+'m':h+'h'):mn+'m';}
+function setSum(id,txt){const el=$(id);if(el)el.textContent=txt||'';}
+
+function toast(msg,color){
+  const t=$('toast');if(!t)return;
+  t.style.color=color||'#3dd68c';t.textContent=msg;t.style.opacity='1';
+  const s=$('saveStatus');if(s){s.style.color=color||'#3dd68c';s.textContent=msg;}
+  clearTimeout(toast._t);toast._t=setTimeout(()=>{t.style.opacity='0';if(s)s.textContent='';},3000);
+}
+
+function storageOK(){
+  try{localStorage.setItem('_t','1');localStorage.removeItem('_t');return true;}catch(e){return false;}
+}
+const wire=(ids,fn,ev='input')=>ids.forEach(id=>{const el=$(id);if(el)el.addEventListener(ev,fn);});
+const numF=id=>{const v=parseFloat(val(id));return isNaN(v)?0:v;};
+function setBfNow(){try{const d=new Date();$('bfStart').value=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}catch(e){}}
+function setNow(id){try{const el=$(id);if(!el)return;const d=new Date();el.value=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){}}
+function setDateToday(){try{$('sessionDate').valueAsDate=new Date();}catch(e){}}
+
+// Section toggle
+function toggleSec(id){
+  const body=$('body-'+id),chev=$('chev-'+id);
+  if(!body)return;
+  const opening=!body.classList.contains('open');
+  body.classList.toggle('open',opening);
+  if(chev)chev.classList.toggle('open',opening);
+  if(id==='chart'&&opening&&myChart)setTimeout(()=>myChart.resize(),350);
+}
+
+// Interpolation
+function interpT(t){
+  const s=TEMPING;
+  if(t<=s[0].t)return{hours:s[0].h,rise:s[0].r};
+  if(t>=s[s.length-1].t)return{hours:s[s.length-1].h,rise:s[s.length-1].r};
+  for(let i=0;i<s.length-1;i++){
+    if(t>=s[i].t&&t<=s[i+1].t){
+      const f=(t-s[i].t)/(s[i+1].t-s[i].t);
+      return{hours:+(s[i].h+f*(s[i+1].h-s[i].h)).toFixed(1),rise:Math.round(s[i].r+f*(s[i+1].r-s[i].r))};
+    }
+  }
+}
+function interpL(pct,t){
+  const rows=LOW.filter(r=>r[0]===pct).sort((a,b)=>a[1]-b[1]);
+  if(!rows.length)return null;
+  if(t<=rows[0][1])return{r75:rows[0][2],r100:rows[0][3]};
+  if(t>=rows[rows.length-1][1])return{r75:rows[rows.length-1][2],r100:rows[rows.length-1][3]};
+  for(let i=0;i<rows.length-1;i++){
+    const[,t1,a,b]=rows[i],[,t2,c,d]=rows[i+1];
+    if(t>=t1&&t<=t2){const f=(t-t1)/(t2-t1);return{r75:+(a+f*(c-a)).toFixed(1),r100:+(b+f*(d-b)).toFixed(1)};}
+  }
+}
+
+// Estimation
+function estimate(avg,pct,bfMins){
+  if(bfMins===null)return null;
+  if(avg>32)return{mode:'danger',txt:'Over 32°C — not recommended'};
+  if(avg>28)return{mode:'hot',warn:'Temp above 28°C — gluten degrades rapidly!',min:bfMins+120,max:bfMins+210};
+  if(avg>=25.5)return{mode:'bom',min:bfMins+210,mid:bfMins+240,max:bfMins+270,rise:'25–35%'};
+  if(avg>=18){const g=interpT(avg);const low=pct!==20?interpL(pct,Math.min(avg,23)):null;return{mode:'guide',hours:g.hours,rise:g.rise,done:bfMins+g.hours*60,low,pct};}
+  return{mode:'cold',txt:'Under 18°C — outside table range'};
+}
+
+// Env notes
+function calcEnvNotes(rt,hum,ft,st,avg){
+  const n=[];
+  if(rt!==null&&avg!==null){
+    const d=rt-avg;
+    if(d>3)n.push({i:'🌡️',c:'#f0a050',t:'Room ('+rt+'°C) warmer than dough — fermentation will accelerate'});
+    else if(d<-3)n.push({i:'❄️',c:'#4f9eff',t:'Room ('+rt+'°C) cooler than dough — fermentation will slow'});
+    else n.push({i:'✅',c:'#3dd68c',t:'Room temp ('+rt+'°C) close to dough — stable conditions'});
+  }
+  if(hum!==null){
+    if(hum<40)n.push({i:'💨',c:'#f0a050',t:'Low humidity ('+hum+'%) — cover dough tightly'});
+    else if(hum<=80)n.push({i:'✅',c:'#3dd68c',t:'Humidity ('+hum+'%) — good fermentation conditions'});
+    else n.push({i:'💧',c:'#a78bfa',t:'High humidity ('+hum+'%) — dough will feel stickier'});
+  }
+  if(ft!==null&&avg!==null){
+    if(ft-avg<-5)n.push({i:'❄️',c:'#4f9eff',t:'Cold flour ('+ft+'°C) likely pulled dough temp down'});
+    else if(ft-avg>5)n.push({i:'🌡️',c:'#f0a050',t:'Warm flour ('+ft+'°C) added heat at mixing'});
+  }
+  if(st!==null&&avg!==null){
+    const d=st-avg;
+    if(d<-4)n.push({i:'❄️',c:'#4f9eff',t:'Cold starter ('+st+'°C) — warm to ~21–24°C before use'});
+    else if(d>4)n.push({i:'🌡️',c:'#f0a050',t:'Warm starter ('+st+'°C) — may accelerate early fermentation'});
+    else n.push({i:'✅',c:'#3dd68c',t:'Starter temp ('+st+'°C) matches dough temp well'});
+  }
+  return n;
+}
+
+// No-retard bonus
+function noRetardBonus(t){
+  if(t>=25.5)return 25;
+  if(t>=23)return 20;
+  if(t>=21)return 15;
+  return 10;
+}
+
+// Rise panel
+function renderRisePanel(baseTarget,avgTemp){
+  const panel=$('risePanel');if(!panel)return;
+  const fw=gn('flourWt');
+  const autoStart=fw?Math.round(fw*1.5):null;
+  const startVol=gn('startVol')||autoStart;
+  const currentVol=gn('currentVol');
+  const adj=parseInt(val('prevBake'))||0;
+  const noRetard=val('coldRetard')==='no';
+  const retardBonus=noRetard&&avgTemp?noRetardBonus(avgTemp):0;
+  const effectiveTarget=baseTarget!==null?baseTarget+adj+retardBonus:null;
+  let html='';
+  if(autoStart&&!gn('startVol'))
+    html+='<div style="font-size:0.72rem;color:var(--muted);margin-bottom:6px">Auto start vol: <b style="color:var(--text)">'+autoStart+' mL</b> (flour × 1.5)</div>';
+  if(effectiveTarget!==null){
+    html+='<div class="target-ln">Target rise: <b class="target-val">'+effectiveTarget+'%</b>';
+    const parts=[];
+    if(baseTarget)parts.push('base '+baseTarget+'%');
+    if(adj!==0)parts.push((adj>0?'+':'')+adj+'% prev bake');
+    if(retardBonus)parts.push('+'+retardBonus+'% no-retard');
+    if(parts.length)html+=' <span style="color:var(--muted);font-size:0.7rem">('+parts.join(' · ')+')</span>';
+    html+='</div>';
+    if(noRetard)html+='<div style="font-size:0.75rem;color:#4f9eff;margin-bottom:8px;line-height:1.4">🧊 No cold retard: bulk to full fermentation, then shape + 30–60 min room-temp proof. Use poke test to judge final proof.</div>';
+  }
+  if(!startVol){html+='<div style="font-size:0.8rem;color:var(--muted)">Enter flour weight or start volume to track % rise</div>';panel.innerHTML=html;setSum('sum-rise','');return;}
+  if(!currentVol){panel.innerHTML=html;setSum('sum-rise',effectiveTarget?'target '+effectiveTarget+'%':'');return;}
+  const rise=Math.round((currentVol-startVol)/startVol*100);
+  const maxBar=effectiveTarget?effectiveTarget*1.6:100;
+  const barPct=Math.min(100,Math.round(rise/maxBar*100));
+  let sc='#4f9eff',si='📊',sm='Measuring...';
+  if(effectiveTarget!==null){
+    if(rise<effectiveTarget-15){sc='#6e7f96';si='⏳';sm='Keep waiting';}
+    else if(rise<effectiveTarget-5){sc='#facc15';si='👀';sm='Getting close — monitor';}
+    else if(rise<=effectiveTarget+5){sc='#3dd68c';si='✅';sm='At target!';}
+    else if(rise<=effectiveTarget+15){sc='#f0a050';si='⚠️';sm='Above target — act soon!';}
+    else{sc='#ef5050';si='🚨';sm='Over target!';}
+  }
+  html+='<div class="rise-row"><div class="rise-big" style="color:'+sc+'">'+rise+'%</div>';
+  html+='<div class="rise-bar-bg"><div class="rise-bar-fill" style="background:'+sc+';width:'+barPct+'%"></div></div></div>';
+  if(effectiveTarget!==null)html+='<div style="font-size:0.82rem;color:'+sc+'">'+si+' '+sm+'</div>';
+  html+='<div class="rise-sub">'+currentVol+' − '+startVol+' mL = +'+(currentVol-startVol)+' mL · Rise: '+rise+'%'+(effectiveTarget!==null?' · Target: '+effectiveTarget+'%':'')+'</div>';
+  panel.innerHTML=html;
+  setSum('sum-rise',rise+'% / target '+(effectiveTarget||'?')+'%');
+}
+
+// Session persistence
+function getFields(){
+  return{entries,envLog,date:val('sessionDate'),name:val('sessionName'),
+    bfStart:val('bfStart'),starterPct:val('starterPct'),
+    roomTemp:val('roomTemp'),humidity:val('humidity'),
+    flourTemp:val('flourTemp'),starterTemp:val('starterTemp'),
+    flourWt:val('flourWt'),startVol:val('startVol'),
+    currentVol:val('currentVol'),prevBake:val('prevBake'),
+    bakeNotes:val('bakeNotes'),coldRetard:val('coldRetard'),
+    mixDesired:val('mixDesired'),mixFriction:val('mixFriction'),
+    planEatDate:val('planEatDate'),planEatTime:val('planEatTime'),planColdDur:val('planColdDur'),
+    calc:getCalc()};
+}
+
+function setFields(d){
+  if(!d)return;
+  entries=d.entries||[];envLog=d.envLog||[];
+  const set=(id,v)=>{const el=$(id);if(el)el.value=v||'';};
+  set('sessionDate',d.date);set('sessionName',d.name);set('bfStart',d.bfStart);
+  set('starterPct',d.starterPct||20);set('roomTemp',d.roomTemp);
+  set('humidity',d.humidity);set('flourTemp',d.flourTemp);set('starterTemp',d.starterTemp);
+  set('flourWt',d.flourWt);set('startVol',d.startVol);
+  set('currentVol',d.currentVol);set('prevBake',d.prevBake||'0');
+  const cr=$('coldRetard');if(cr)cr.value=d.coldRetard||'yes';
+  const bn=$('bakeNotes');if(bn)bn.value=d.bakeNotes||'';
+  set('mixDesired',d.mixDesired);set('mixFriction',d.mixFriction||'0');
+  set('planEatDate',d.planEatDate);set('planEatTime',d.planEatTime);set('planColdDur',d.planColdDur||'12');
+  setCalc(d.calc);
+}
+
+function buildDropdown(){
+  const sel=$('sessionList');if(!sel)return;
+  const cur=sel.value;
+  const keys=[];
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('sd_'))keys.push(k);}}
+  catch(e){return;}
+  keys.sort().reverse();
+  sel.innerHTML='<option value="">— saved sessions —</option>';
+  keys.forEach(k=>{
+    try{
+      const d=JSON.parse(localStorage.getItem(k)||'{}');
+      const opt=document.createElement('option');
+      opt.value=k;opt.textContent=(d.date||'')+(d.name?' — '+d.name:'');
+      sel.appendChild(opt);
+    }catch(e){}
+  });
+  if(cur)sel.value=cur;
+}
+
+// Time helpers
+function autoColon(e){
+  let v=e.target.value.replace(/\D/g,'');
+  if(v.length>2)v=v.slice(0,2)+':'+v.slice(2,4);
+  e.target.value=v;
+}
+
+function setNextTime(addMins){
+  const tv=val('timeIn');
+  let base=toMins(tv);
+  if(base===null){const now=new Date();base=now.getHours()*60+now.getMinutes();}
+  const next=base+addMins;
+  const h=Math.floor(((next%1440)+1440)%1440/60),mn=next%60;
+  $('timeIn').value=String(h).padStart(2,'0')+':'+String(mn).padStart(2,'0');
+}
+
+// Stat helper
+function stat(label,value,color){
+  return'<div class="stat"><div class="stat-l">'+label+'</div><div class="stat-v" style="color:'+color+'">'+value+'</div></div>';
+}
+
+// Final Proofing Guide
+function renderProofGuide(){
+  const body=$('proofGuideBody');if(!body)return;
+  const cold=val('coldRetard')==='yes';
+  setSum('sum-proof',cold?'Cold retard':'Room temp');
+  let html='';
+  if(cold){
+    html+='<div class="proof-hd" style="color:#4f9eff">❄️ Cold Retard — Fridge Proof</div>';
+    html+='<div class="proof-list">';
+    html+='<div style="color:var(--text)">🔪 Shape immediately → place in fridge. Minimum <b>8–12 hours</b>, up to <b>3 days</b>.</div>';
+    html+='<div style="color:#f0a050">🌡️ Fridge must stay <b>below 4°C</b> — any warmer and dough overproofs.</div>';
+    html+='<div style="color:#3dd68c">🧊 Bake directly from cold — no need to bring to room temp first.</div>';
+    html+='<div class="box hybrid"><b>Hybrid option:</b> If dough felt stiff or underproofed at shaping, leave <b>30–60 min on counter</b> before fridging (max 90 min).</div></div>';
+  }else{
+    html+='<div class="proof-hd" style="color:#f0a050">🌡️ Room Temp Proof — No Fridge</div>';
+    html+='<div class="proof-list">';
+    html+='<div style="color:var(--text)">🍞 After shaping: cover and proof at room temp for <b>1–4 hours</b>.</div>';
+    html+='<div style="color:var(--text)">🌡️ At 26–27°C dough temp: expect <b>1–2 hours</b>.</div>';
+    html+='<div class="box poke"><div style="color:#facc15;font-weight:600;margin-bottom:8px">👆 Poke Test — judge readiness:</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:6px">';
+    html+='<div style="color:#3dd68c">✅ Springs back <b>slowly, halfway</b> → ready to bake</div>';
+    html+='<div style="color:#4f9eff">⏳ Springs back <b>immediately</b> → needs more time</div>';
+    html+='<div style="color:#ef5050">🚨 <b>Stays indented</b> → overproofing — bake NOW</div>';
+    html+='</div></div>';
+    html+='<div style="color:var(--muted);font-size:0.8rem">⚠️ Poke test only works on <b>room-temp dough</b>, not cold dough.</div>';
+    html+='<div style="color:var(--muted);font-size:0.8rem">🥖 Room-temp proofed loaves = milder flavor, softer crust.</div>';
+    html+='</div>';
+  }
+  body.innerHTML=html;
+}
+
+let foldState={active:false,setIdx:0,total:4,intervalMs:30*60*1000,nextTime:0,tId:null};
+
+function renderFoldDots(){
+  const d=$('foldDots');if(!d)return;
+  let h='';
+  for(let i=0;i<foldState.total;i++){
+    const done=i<foldState.setIdx;
+    h+='<span style="display:inline-block;width:14px;height:14px;border-radius:50%;margin:0 4px;background:'+(done?'#a78bfa':'transparent')+';border:2px solid '+(done?'#a78bfa':'#6e7f96')+';vertical-align:middle"></span>';
+  }
+  d.innerHTML=h;
+}
+
+function foldTick(){
+  if(!foldState.active)return;
+  const rem=foldState.nextTime-Date.now();
+  const cd=$('foldCountdown');
+  if(rem<=0){foldRing();return;}
+  const s=Math.ceil(rem/1000);
+  const mm=String(Math.floor(s/60)).padStart(2,'0');
+  const ss=String(s%60).padStart(2,'0');
+  if(cd)cd.textContent=mm+':'+ss;
+  foldState.tId=setTimeout(foldTick,250);
+}
+
+function foldBeep(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.25,0.5].forEach(t=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=880;o.type='sine';
+      g.gain.setValueAtTime(0.0001,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.3,ctx.currentTime+t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+t+0.18);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.2);
+    });
+  }catch(e){}
+}
+
+function foldRing(){
+  foldState.setIdx++;
+  foldBeep();
+  try{if('Notification' in window&&Notification.permission==='granted')new Notification('🤲 Time to fold!',{body:'Set '+foldState.setIdx+' of '+foldState.total});}catch(e){}
+  const d=new Date();
+  const tv=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const label='Fold '+foldState.setIdx+' of '+foldState.total;
+  entries.push({time:tv,mins:d.getHours()*60+d.getMinutes(),temp:null,probe:label,isFold:true});
+  const banner=$('foldBanner');
+  if(foldState.setIdx>=foldState.total){
+    foldState.active=false;
+    if(banner)banner.innerHTML='<div class="box" style="background:#1a3a2a;color:#3dd68c;padding:10px;border-radius:8px">All folds complete ✅</div>';
+    const cd=$('foldCountdown');if(cd)cd.textContent='00:00';
+    const st=$('foldStatus');if(st)st.textContent='Done';
+  }else{
+    if(banner)banner.innerHTML='<div class="box warn" style="padding:10px;border-radius:8px">🤲 Time to fold! Set '+foldState.setIdx+' of '+foldState.total+'</div>';
+    foldState.nextTime=Date.now()+foldState.intervalMs;
+    const st=$('foldStatus');if(st)st.textContent='Set '+(foldState.setIdx+1)+' of '+foldState.total;
+    setTimeout(()=>{const b=$('foldBanner');if(b&&b.innerHTML.includes('Time to fold'))b.innerHTML='';},10000);
+    foldTick();
+  }
+  renderFoldDots();
+  render();
+}
+
+function foldStart(){
+  try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}
+  const sets=Math.max(1,Math.min(8,parseInt(val('foldSets'))||4));
+  const iv=(parseInt(val('foldInterval'))||30)*60*1000;
+  foldState.total=sets;foldState.intervalMs=iv;foldState.setIdx=0;foldState.active=true;
+  foldState.nextTime=Date.now()+iv;
+  const st=$('foldStatus');if(st)st.textContent='Set 1 of '+sets;
+  const banner=$('foldBanner');if(banner)banner.innerHTML='';
+  renderFoldDots();
+  foldTick();
+}
+
+function foldReset(){
+  foldState.active=false;
+  if(foldState.tId){clearTimeout(foldState.tId);foldState.tId=null;}
+  foldState.setIdx=0;foldState.total=parseInt(val('foldSets'))||4;
+  const cd=$('foldCountdown');if(cd)cd.textContent='--:--';
+  const st=$('foldStatus');if(st)st.textContent='Set 1 of '+foldState.total;
+  const banner=$('foldBanner');if(banner)banner.innerHTML='';
+  renderFoldDots();
+}
+
+function calcMixWater(){
+  const out=$('mixWaterOut'),note=$('mixWaterNote');if(!out)return;
+  if(!val('mixDesired')&&val('c_wtDesired')){const md=$('mixDesired');if(md)md.value=val('c_wtDesired');}
+  const d=parseFloat(val('mixDesired'));
+  const fl=gn('flourTemp'),rm=gn('roomTemp'),st=gn('starterTemp');
+  const fr=parseFloat(val('mixFriction'))||0;
+  if(isNaN(d)||fl===null||rm===null||st===null){
+    out.textContent='— °C';out.style.background='#1a2332';out.style.color='var(--muted)';
+    if(note)note.innerHTML='<span style="color:var(--muted)">Enter desired temp and fill flour/room/starter in Environment</span>';
+    return;
+  }
+  const wt=+(d*4-fl-rm-st-fr).toFixed(1);
+  out.textContent=wt+' °C';
+  let bg,fg,msg;
+  if(wt>45){bg='#3a1a1a';fg='#ef5050';msg='🔥 Too hot — will kill starter. Use ice water instead.';}
+  else if(wt>=35){bg='#3a2a1a';fg='#f0a050';msg='⚠️ Warm — use carefully.';}
+  else if(wt>=15){bg='#1a3a2a';fg='#3dd68c';msg='✅ Normal range.';}
+  else{bg='#1a2a3a';fg='#4f9eff';msg='❄️ Very cold water.';}
+  out.style.background=bg;out.style.color=fg;
+  if(note)note.innerHTML='<span style="color:'+fg+'">'+msg+'</span>';
+  const sm=$('sum-mix');if(sm)sm.textContent='Water '+wt+'°C';
+}
+
+function renderDriftBanner(avg){
+  const db=$('driftBanner');if(!db)return;
+  const d=parseFloat(val('mixDesired'));
+  if(isNaN(d)||avg===null){db.innerHTML='';return;}
+  const drift=+(avg-d).toFixed(1);
+  if(Math.abs(drift)<=1.5){db.innerHTML='';return;}
+  const adj=+(drift*4*-1).toFixed(1);
+  const dir=drift>0?'above':'below';
+  const sign=adj>=0?'+':'';
+  db.innerHTML='<div class="box warn" style="margin-bottom:10px">⚠️ Dough is '+Math.abs(drift)+'°C '+dir+' target ('+d+'°C). Next bake: adjust water temp by approximately '+sign+adj+'°C</div>';
+}
+
+// Main render
+function render(){
+  const has=entries.length>0;
+  const em=$('emptyMsg');if(em)em.style.display=has?'none':'block';
+  const rb=$('resetBtn');if(rb)rb.style.display=has?'block':'none';
+  const mc=$('mixCard');if(mc)mc.style.display=has?'none':'block';
+  const fc=$('foldCard');if(fc){fc.style.display=val('bfStart')?'block':'none';if(!foldState.active&&foldState.setIdx===0){foldState.total=parseInt(val('foldSets'))||4;renderFoldDots();}}
+  calcMixWater();
+
+  const doughEnt=entries.filter(e=>!e.isFold&&e.temp!==null&&e.temp!==undefined);
+  const avg=doughEnt.length>0?+(doughEnt.map(e=>e.temp).reduce((a,b)=>a+b,0)/doughEnt.length).toFixed(1):null;
+  const bfMins=toMins(val('bfStart'));
+  const baseMins=bfMins??(has?Math.min(...entries.map(e=>e.mins)):null);
+  const pct=+(val('starterPct')||20);
+
+  // Room-adjusted effective average
+  const curRoomTemp=(()=>{
+    const sorted=[...envLog].filter(e=>e.roomTemp!==null).sort((a,b)=>b.mins-a.mins);
+    return sorted.length?sorted[0].roomTemp:gn('roomTemp');
+  })();
+  const effectiveAvg=(avg!==null&&curRoomTemp!==null)
+    ?+(avg+(curRoomTemp-avg)*0.15).toFixed(1):avg;
+
+  const est=effectiveAvg&&bfMins!==null?estimate(effectiveAvg,pct,bfMins):null;
+
+  // Summaries
+  const sd=val('sessionDate'),sn=val('sessionName');
+  setSum('sum-session',sd?(sd+(sn?' — '+sn:'')):'');
+  setSum('sum-setup',(val('starterPct')||'20')+'% starter · '+(val('coldRetard')==='yes'?'Cold retard':'Room temp'));
+  const rt=gn('roomTemp'),hum=gn('humidity');
+  setSum('sum-env',[rt!==null?rt+'°C room':null,hum!==null?hum+'% hum':null].filter(Boolean).join(' · '));
+  setSum('sum-add',has?doughEnt.length+' reading'+(doughEnt.length===1?'':'s'):'');
+  setSum('sum-log',has?entries.length+' reading'+(entries.length===1?'':'s'):'');
+  const bn=val('bakeNotes');
+  setSum('sum-notes',bn?bn.slice(0,40)+(bn.length>40?'…':''):'');
+  const dcount=doughEnt.length;
+  setSum('sum-chart',dcount>=2?dcount+' readings':'');
+
+  // Estimation
+  const ec=$('estCard');
+  if(ec){
+    if(avg){
+      ec.style.display='block';
+      let s=stat('Measured Avg',avg+' °C','#6e7f96');
+      if(effectiveAvg!==avg)s+=stat('Room-Adjusted Avg',effectiveAvg+' °C','#4f9eff');
+      else s+=stat('Avg Dough Temp',avg+' °C','#4f9eff');
+      let src='';
+      if(est?.mode==='bom'){
+        s+=stat('Est. Window',toHHMM(est.min)+' – '+toHHMM(est.max),'#3dd68c');
+        s+=stat('Target % Rise',est.rise,'#facc15');
+        s+=stat('Duration','3.5 – 4.5 hrs','#a78bfa');
+        src='📊 Bulk-O-Matic System (25.5–28°C, Tartine method)';
+        setSum('sum-est',avg+'°C · '+toHHMM(est.min)+'–'+toHHMM(est.max));
+      }else if(est?.mode==='guide'){
+        s+=stat('Est. Duration',est.hours+' hrs','#a78bfa');
+        s+=stat('Est. Done',toHHMM(est.done),'#3dd68c');
+        s+=stat('Target % Rise',est.rise+'%','#facc15');
+        if(est.pct!==20&&est.low)s+=stat(est.pct+'% (75% rise)',est.low.r75+'h → '+toHHMM(bfMins+est.low.r75*60),'#f0a050');
+        src='📊 Dough Temping Guide 2024 (20% starter, 75% hydration)';
+        setSum('sum-est',avg+'°C · done ~'+toHHMM(est.done));
+      }else if(est?.mode==='hot'){
+        s+=stat('Est. Window',toHHMM(est.min)+' – '+toHHMM(est.max),'#f0a050');
+        s+='<div class="box warn">⚠️ '+est.warn+'</div>';
+        src='📊 Bulk-O-Matic — high temp warning';
+        setSum('sum-est','⚠️ '+avg+'°C — hot!');
+      }else if(est){
+        s+='<div class="box err">⚠️ '+est.txt+'</div>';
+        setSum('sum-est',avg+'°C');
+      }else{
+        setSum('sum-est',avg+'°C');
+      }
+      const es=$('estStats');if(es)es.innerHTML=s;
+      const esrc=$('estSource');if(esrc)esrc.textContent=src;
+    }else{ec.style.display='none';}
+  }
+
+  // Rise
+  const baseTarget=est?(est.mode==='bom'?30:est.mode==='guide'?est.rise:null):null;
+  renderRisePanel(baseTarget,avg);
+
+  // Downstream warn
+  const downstreamDiv=$('downstreamWarn');
+  if(downstreamDiv&&est&&avg!==null){
+    const currentVol=gn('currentVol');
+    const fw=gn('flourWt');
+    const startVol=gn('startVol')||(fw?fw*1.5:null);
+    const rise=currentVol&&startVol?Math.round((currentVol-startVol)/startVol*100):null;
+    const adjTarget=baseTarget!==null?baseTarget+(parseInt(val('prevBake'))||0):null;
+    if(rise!==null&&adjTarget!==null&&rise>=adjTarget-10){
+      const warmAdj=avg>=26?'10–20%':avg>=23?'5–10%':'~5%';
+      downstreamDiv.innerHTML='<div class="box caution">⚠️ <b>Approaching target!</b> Dough continues rising during 40-min shaping (+'+warmAdj+' at '+avg+'°C). Shape soon!</div>';
+    }else{downstreamDiv.innerHTML='';}
+  }
+
+  // Env notes
+  const en=$('envNotes');
+  if(en)en.innerHTML=calcEnvNotes(gn('roomTemp'),gn('humidity'),gn('flourTemp'),gn('starterTemp'),avg)
+    .map(n=>'<div class="note-row" style="color:'+n.c+'"><span>'+n.i+'</span><span>'+n.t+'</span></div>').join('');
+
+  // Env log
+  const eld=$('envLogDisplay');
+  if(eld){
+    if(envLog.length){
+      eld.innerHTML='<div class="env-hd">Env Changes</div>'+
+        envLog.map((e,i)=>{
+          const parts=[];
+          if(e.roomTemp!==null)parts.push('Room: '+e.roomTemp+'°C');
+          if(e.humidity!==null)parts.push('Hum: '+e.humidity+'%');
+          return'<div class="env-row"><span class="mono-f">'+e.time+'</span><span style="flex:1">'+parts.join(' · ')+'</span><button onclick="delEnv('+i+')" class="x-btn pad">✕</button></div>';
+        }).join('');
+    }else{eld.innerHTML='';}
+  }
+
+  // Log
+  const lc=$('logCard');
+  if(lc){
+    if(has){
+      lc.style.display='block';
+      let h='<span class="lh">Time</span><span class="lh">Temp</span><span class="lh">Probe</span>';
+      entries.forEach((e,i)=>{
+        const el=baseMins!==null?e.mins-baseMins:0;
+        const isFold=e.isFold;
+        h+='<span class="log-tm">'+e.time+' <span class="log-tm-d">'+(isFold?'fold':'+'+xLbl(el))+'</span></span>';
+        h+='<span style="color:'+(isFold?'#a78bfa':'#4f9eff')+'">'+(isFold?e.probe:(e.temp+' °C'))+'</span>';
+        h+='<span class="log-cell"><span class="log-pr">'+(isFold?'🤲':e.probe)+'</span><button onclick="del('+i+')" class="x-btn">✕</button></span>';
+      });
+      const lg=$('logGrid');if(lg)lg.innerHTML=h;
+    }else{lc.style.display='none';}
+  }
+
+  renderDriftBanner(avg);
+  updateChart(avg,baseMins,bfMins,est);
+  renderProofGuide();
+}
+
+// Chart
+function updateChart(avg,baseMins,bfMins,est){
+  const cc=$('chartCard');if(!cc)return;
+  const doughEntries=entries.filter(e=>!e.isFold&&e.temp!==null&&e.temp!==undefined);
+  if(!baseMins||doughEntries.length<2){
+    cc.style.display='none';if(myChart){myChart.destroy();myChart=null;}return;
+  }
+  cc.style.display='block';
+  const probes=[...new Set(doughEntries.map(e=>e.probe))].sort();
+  const xs=[...new Set(doughEntries.map(e=>e.mins-baseMins))].sort((a,b)=>a-b);
+  const datasets=probes.map((p,i)=>({
+    label:p,
+    data:xs.map(x=>{const e=doughEntries.find(e=>e.probe===p&&(e.mins-baseMins)===x);return{x,y:e?e.temp:null};}),
+    borderColor:COLORS[i%COLORS.length],backgroundColor:'transparent',
+    pointRadius:4,borderWidth:1.5,spanGaps:false,tension:0.3
+  }));
+  datasets.push({label:'Average',
+    data:xs.map(x=>{const v=doughEntries.filter(e=>(e.mins-baseMins)===x).map(e=>e.temp);return{x,y:v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):null};}),
+    borderColor:'#ffffff',backgroundColor:'transparent',borderDash:[6,3],pointRadius:0,borderWidth:2.5,spanGaps:true,tension:0.3
+  });
+  if(envLog.length){
+    const sorted=[...envLog].filter(e=>e.roomTemp!==null).sort((a,b)=>a.mins-b.mins);
+    if(sorted.length){
+      const rtData=[];
+      sorted.forEach((e,i)=>{
+        const x=e.mins-baseMins;
+        const nextX=i<sorted.length-1?sorted[i+1].mins-baseMins:xs[xs.length-1];
+        rtData.push({x,y:e.roomTemp});rtData.push({x:nextX,y:e.roomTemp});
+      });
+      datasets.push({label:'Room Temp',data:rtData,borderColor:'#475569',backgroundColor:'transparent',
+        borderDash:[3,3],pointRadius:0,borderWidth:1,spanGaps:false,stepped:'before'});
+    }
+  }else{
+    const rt=gn('roomTemp');
+    if(rt!==null)datasets.push({label:'Room Temp',data:[{x:xs[0],y:rt},{x:xs[xs.length-1],y:rt}],
+      borderColor:'#475569',backgroundColor:'transparent',borderDash:[3,3],pointRadius:0,borderWidth:1,spanGaps:true});
+  }
+
+  const vlines=[];
+  if(est&&bfMins!==null){
+    if(est.mode==='bom'){
+      vlines.push({x:est.min-baseMins,label:'3.5h',color:'#facc15'});
+      vlines.push({x:est.mid-baseMins,label:'4h',color:'#3dd68c'});
+      vlines.push({x:est.max-baseMins,label:'4.5h',color:'#f0a050'});
+    }else if(est.mode==='guide'){vlines.push({x:est.done-baseMins,label:'~'+est.hours+'h',color:'#3dd68c'});}
+    else if(est.mode==='hot'){
+      vlines.push({x:est.min-baseMins,label:'Early',color:'#facc15'});
+      vlines.push({x:est.max-baseMins,label:'Late',color:'#f0a050'});
+    }
+  }
+
+  if(myChart)myChart.destroy();
+  myChart=new Chart($('myChart'),{
+    type:'line',data:{datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        x:{type:'linear',ticks:{color:'#6e7f96',font:{family:'monospace',size:10},callback:v=>xLbl(v)},grid:{color:'#1e2738'}},
+        y:{ticks:{color:'#6e7f96',font:{family:'monospace',size:10}},grid:{color:'#1e2738'},title:{display:true,text:'°C',color:'#6e7f96'}}
+      },
+      plugins:{
+        legend:{labels:{color:'#6e7f96',font:{family:'system-ui',size:11}}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+' °C',title:c=>'+'+xLbl(c[0].parsed.x)},
+          backgroundColor:'#0d1117',borderColor:'#2d3a50',borderWidth:1,titleFont:{family:'monospace'},bodyFont:{family:'monospace'}},
+        vertLines:{lines:vlines}
+      }
+    },
+    plugins:[{id:'vertLines',afterDraw(chart,args,o){
+      if(!o?.lines?.length)return;
+      const{ctx,chartArea,scales}=chart;
+      ctx.save();
+      o.lines.forEach(l=>{
+        if(l.x<scales.x.min||l.x>scales.x.max)return;
+        const px=scales.x.getPixelForValue(l.x);
+        ctx.beginPath();ctx.strokeStyle=l.color;ctx.lineWidth=1.5;ctx.setLineDash([4,2]);
+        ctx.moveTo(px,chartArea.top);ctx.lineTo(px,chartArea.bottom);ctx.stroke();
+        ctx.setLineDash([]);ctx.fillStyle=l.color;ctx.font='10px monospace';
+        ctx.fillText(l.label,px+3,chartArea.top+12);
+      });
+      ctx.restore();
+    }}]
+  });
+}
+
+// Actions
+function del(i){entries.splice(i,1);render();}
+function delEnv(i){envLog.splice(i,1);render();}
+
+// Events
+$('addBtn').addEventListener('click',()=>{
+  const tv=val('timeIn'),tp=parseFloat(val('tempIn')),pr=val('probeIn');
+  if(!tv||!tv.includes(':')||isNaN(tp))return;
+  const[h,m]=tv.split(':').map(Number);
+  if(isNaN(h)||isNaN(m))return;
+  const probe='Probe '+pr;
+  entries=entries.filter(e=>!(e.probe===probe&&e.time===tv));
+  entries.push({time:tv,mins:h*60+m,temp:tp,probe});
+  $('tempIn').value='';
+  $('probeIn').value=Math.min(+pr+1,20);
+  render();
+  autoSaveSession();
+});
+
+$('logEnvBtn').addEventListener('click',()=>{
+  const rt=gn('roomTemp'),hum=gn('humidity');
+  if(rt===null&&hum===null){toast('⚠️ Enter room temp or humidity first','#f0a050');return;}
+  const tv=val('envTime');
+  if(!tv||!tv.includes(':')){toast('⚠️ Enter a time for the env change','#f0a050');return;}
+  const[h,m]=tv.split(':').map(Number);
+  if(isNaN(h)||isNaN(m)){toast('⚠️ Invalid time','#f0a050');return;}
+  envLog.push({time:tv,mins:h*60+m,roomTemp:rt,humidity:hum});
+  envLog.sort((a,b)=>a.mins-b.mins);
+  render();
+  toast('✅ Environment logged at '+tv);
+});
+
+$('plus10').addEventListener('click',()=>setNextTime(10));
+$('plus30').addEventListener('click',()=>setNextTime(30));
+$('foldStartBtn').addEventListener('click',foldStart);
+$('foldResetBtn').addEventListener('click',foldReset);
+wire(['foldSets'],()=>{if(!foldState.active){foldState.total=parseInt(val('foldSets'))||4;renderFoldDots();const st=$('foldStatus');if(st)st.textContent='Set 1 of '+foldState.total;}});
+$('bfNowBtn').addEventListener('click',()=>setNow('bfStart'));
+$('timeNowBtn').addEventListener('click',()=>setNow('timeIn'));
+$('envNowBtn').addEventListener('click',()=>setNow('envTime'));
+
+$('resetBtn').addEventListener('click',()=>{
+  if(!confirm('Reset all readings?'))return;
+  entries=[];envLog=[];render();
+});
+
+function autoSaveSession(){
+  const date=val('sessionDate');if(!date)return;
+  if(!storageOK())return;
+  const name=val('sessionName');
+  try{
+    let existingKey=null;
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('sd_')){
+        try{const d=JSON.parse(localStorage.getItem(k)||'{}');if(d.date===date&&d.name===name){existingKey=k;break;}}catch(e){}
+      }
+    }
+    const key=existingKey||('sd_'+Date.now());
+    localStorage.setItem(key,JSON.stringify(getFields()));
+    buildDropdown();
+    const sel=$('sessionList');if(sel)sel.value=key;
+    const s=$('saveStatus');
+    if(s){s.style.color='#3dd68c';s.textContent='✅ Auto-saved';clearTimeout(autoSaveSession._t);autoSaveSession._t=setTimeout(()=>{s.textContent='';},2000);}
+  }catch(e){}
+}
+
+$('saveBtn').addEventListener('click',()=>{
+  const date=val('sessionDate'),name=val('sessionName');
+  if(!date){toast('⚠️ Pick a date first','#f0a050');return;}
+  if(!storageOK()){toast('⚠️ Storage blocked — disable private mode','#ef5050');return;}
+  try{
+    let existingKey=null;
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('sd_')){
+        try{const d=JSON.parse(localStorage.getItem(k)||'{}');if(d.date===date&&d.name===name){existingKey=k;break;}}
+        catch(e){}
+      }
+    }
+    const key=existingKey||('sd_'+Date.now());
+    localStorage.setItem(key,JSON.stringify(getFields()));
+    buildDropdown();
+    const sel=$('sessionList');if(sel)sel.value=key;
+    toast((existingKey?'✅ Overwritten: ':'✅ Saved: ')+date+(name?' — '+name:''));
+  }catch(e){toast('⚠️ '+e.message,'#ef5050');}
+});
+
+$('loadBtn').addEventListener('click',()=>{
+  const key=val('sessionList');
+  if(!key){toast('⚠️ Select a session','#f0a050');return;}
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw){toast('Not found','#ef5050');return;}
+    setFields(JSON.parse(raw));render();toast('✅ Loaded');
+  }catch(e){toast('⚠️ '+e.message,'#ef5050');}
+});
+
+$('deleteBtn').addEventListener('click',()=>{
+  const key=val('sessionList');
+  if(!key){toast('⚠️ Select a session','#f0a050');return;}
+  if(!confirm('Delete this session?'))return;
+  try{localStorage.removeItem(key);buildDropdown();toast('🗑 Deleted');}
+  catch(e){}
+});
+
+$('newBtn').addEventListener('click',()=>{
+  if(entries.length>0||envLog.length>0){
+    if(!confirm('Start a new session? Unsaved data will be lost.'))return;
+  }
+  entries=[];envLog=[];
+  ['sessionName','bfStart','roomTemp','humidity','flourTemp','starterTemp','envTime','mixDesired'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  const mf=$('mixFriction');if(mf)mf.value='0';
+  setDateToday();
+  setBfNow();
+  const sel=$('sessionList');if(sel)sel.value='';
+  render();
+  toast('New session started');
+});
+
+wire(['bfStart','timeIn','envTime'],autoColon);
+wire(['bfStart','starterPct','roomTemp','humidity','flourTemp','starterTemp','flourWt','startVol','currentVol','prevBake','coldRetard','mixDesired','mixFriction'],render);
+wire(['flourTemp','roomTemp','starterTemp'],()=>{
+  const sync=(src,tgt)=>{const s=$(src),t=$(tgt);if(s&&t&&s.value)t.value=s.value;};
+  sync('flourTemp','c_wtFlour');sync('roomTemp','c_wtRoom');sync('starterTemp','c_wtLevain');
+  if($('calcOv')&&$('calcOv').classList.contains('open'))calcWater();
+});
+$('bakeNotes').addEventListener('input',()=>setSum('sum-notes',(val('bakeNotes')||'').slice(0,40)));
+
+// Dough Calculator
+const CALC_IDS=['c_target','c_scale','c_levainPct','c_waterPct','c_saltPct',
+  'c_f1n','c_f1p','c_f2n','c_f2p','c_f3n','c_f3p',
+  'c_i1n','c_i1p','c_i2n','c_i2p','c_i3n','c_i3p',
+  'c_wtDesired','c_wtFriction','c_wtLevain','c_wtFlour','c_wtRoom'];
+
+function getCalc(){const o={};CALC_IDS.forEach(i=>{const el=$(i);if(el)o[i]=el.value;});return o;}
+function setCalc(c){if(!c)return;CALC_IDS.forEach(i=>{const el=$(i);if(el&&c[i]!==undefined)el.value=c[i];});}
+
+function calcRecipe(){
+  const target=numF('c_target'),scale=numF('c_scale')||1;
+  const levP=numF('c_levainPct'),watP=numF('c_waterPct'),salP=numF('c_saltPct');
+  const f1p=numF('c_f1p'),f2p=numF('c_f2p'),f3p=numF('c_f3p');
+  const i1p=numF('c_i1p'),i2p=numF('c_i2p'),i3p=numF('c_i3p');
+  const f1n=val('c_f1n')||'Flour 1',f2n=val('c_f2n')||'Flour 2',f3n=val('c_f3n')||'Flour 3';
+  const i1n=val('c_i1n')||'Inclusion 1',i2n=val('c_i2n')||'Inclusion 2',i3n=val('c_i3n')||'Inclusion 3';
+
+  const divisor=1+(watP+salP+i1p+i2p+i3p)/100;
+  const totalFlour=target>0?target/divisor:0;
+
+  const w=pct=>totalFlour*pct/100;
+  const f1w=w(f1p),f2w=w(f2p),f3w=w(f3p);
+  const watW=w(watP),salW=w(salP),levW=w(levP);
+  const i1w=w(i1p),i2w=w(i2p),i3w=w(i3p);
+
+  const lvTotal=levW,lvSWFlour=lvTotal/3,lvWater=lvTotal/3,lvRipe=lvTotal/3;
+  const lvSum=lvSWFlour+lvWater+lvRipe;
+  const rsFlour=lvRipe/2,rsWater=lvRipe/2,rsTotal=lvRipe;
+
+  const pff=lvSWFlour+rsFlour;
+  const pffPct=totalFlour>0?pff/totalFlour*100:0;
+
+  const mdF1=f1w-pff,mdF2=f2w,mdF3=f3w;
+  const mdWater=watW-lvWater-rsWater,mdSalt=salW,mdLev=lvTotal;
+  const mdI1=i1w,mdI2=i2w,mdI3=i3w;
+  const panel1Total=f1w+f2w+f3w+watW+salW+i1w+i2w+i3w;
+  const mdTotal=mdF1+mdF2+mdF3+mdWater+mdSalt+mdLev+mdI1+mdI2+mdI3;
+
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const g=x=>(x*scale).toFixed(1);
+  const row=(n,wt,p,cls)=>'<div class="calc-ing'+(cls?' '+cls:'')+'"><span class="calc-ing-n">'+esc(n)+'</span><span class="calc-ing-p">'+(p!=null?p.toFixed(1)+'%':'')+'</span><span class="calc-ing-w">'+g(wt)+' g</span></div>';
+  const ing=(n,p,wt)=>row(n,wt,p);
+  const ingN=(n,wt)=>row(n,wt);
+  const tot=(n,wt)=>row(n,wt,null,'tot');
+
+  let left='<div class="calc-pn"><div class="calc-pn-t">Total Ingredients</div>';
+  left+=ing(f1n,f1p,f1w);
+  if(f2p>0||f2n!=='Flour 2')left+=ing(f2n,f2p,f2w);
+  if(f3p>0||(f3n!=='Flour 3'&&f3n))left+=ing(f3n,f3p,f3w);
+  left+=ing('Water',watP,watW);
+  left+=ing('Salt',salP,salW);
+  if(i1p>0)left+=ing(i1n,i1p,i1w);
+  if(i2p>0)left+=ing(i2n,i2p,i2w);
+  if(i3p>0)left+=ing(i3n,i3p,i3w);
+  left+=tot('Total',panel1Total);
+  left+='<div class="calc-note" style="margin-top:8px;font-size:0.7rem">Total flour: <b style="color:var(--text)">'+g(totalFlour)+' g</b> · Levain: <b style="color:var(--text)">'+g(lvTotal)+' g</b> · PFF: <b style="color:var(--text)">'+pffPct.toFixed(1)+'%</b></div>';
+  left+='</div>';
+
+  let mid='<div class="calc-pn"><div class="calc-pn-t">Ferments</div>';
+  mid+='<div class="calc-pn-sh">Ripe Starter (100% hyd)</div>';
+  mid+=ingN('Flour',rsFlour);
+  mid+=ingN('Water',rsWater);
+  mid+=tot('Total',rsTotal);
+  mid+='<div class="calc-pn-sh">Levain (1:1:1)</div>';
+  mid+=ingN(f1n,lvSWFlour);
+  mid+=ingN('Water',lvWater);
+  mid+=ingN('Ripe Starter',lvRipe);
+  mid+=tot('Total',lvSum);
+  mid+='</div>';
+
+  let right='<div class="calc-pn"><div class="calc-pn-t">Main Dough Recipe</div>';
+  right+=ingN(f1n,mdF1);
+  if(f2p>0)right+=ingN(f2n,mdF2);
+  if(f3p>0)right+=ingN(f3n,mdF3);
+  right+=ingN('Water',mdWater);
+  right+=ingN('Salt',mdSalt);
+  right+=ingN('Levain',mdLev);
+  if(i1p>0)right+=ingN(i1n,mdI1);
+  if(i2p>0)right+=ingN(i2n,mdI2);
+  if(i3p>0)right+=ingN(i3n,mdI3);
+  right+=tot('Total',mdTotal);
+  right+='</div>';
+
+  const rc=$('calcResults');if(rc)rc.innerHTML=left+mid+right;
+}
+
+let calcWaterCorrection=0;
+function calcWater(){
+  const d=numF('c_wtDesired'),lv=numF('c_wtLevain'),fl=numF('c_wtFlour'),rm=numF('c_wtRoom'),fr=numF('c_wtFriction');
+  const out=$('calcWaterOut');if(!out)return;
+  if(!val('c_wtDesired')){out.textContent='— °C';out.style.color='var(--muted)';$('calcWaterNote').innerHTML='';return;}
+  const wt=d*4-fl-lv-rm-fr+calcWaterCorrection;
+  out.textContent=wt.toFixed(1)+' °C';
+  out.style.color=wt>45?'var(--danger)':wt<15?'var(--accent)':'var(--ok)';
+  let n='';
+  if(wt>45)n='<div class="calc-note warn">⚠️ Above 45°C — use cooler water or ice water.</div>';
+  else if(wt<15)n='<div class="calc-note info">❄️ Below 15°C — use warm water.</div>';
+  else n='<div class="calc-note" style="color:var(--ok)">✅ Water temp in usable range.</div>';
+  if(calcWaterCorrection!==0)n+='<div class="calc-note" style="color:#4f9eff">Correction applied: '+(calcWaterCorrection>=0?'+':'')+calcWaterCorrection.toFixed(1)+'°C from learning</div>';
+  $('calcWaterNote').innerHTML=n;
+}
+
+function renderLearn(){
+  const box=$('calcLearn');if(!box)return;
+  const rows=[];let totalDrift=0,n=0;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(!k||!k.startsWith('sd_'))continue;
+    try{
+      const d=JSON.parse(localStorage.getItem(k)||'{}');
+      const desired=parseFloat(d.mixDesired||(d.calc&&d.calc.c_wtDesired));
+      if(isNaN(desired))continue;
+      const readings=(d.entries||[]).filter(e=>!e.isFold&&e.temp!==null&&e.temp!==undefined);
+      if(readings.length===0)continue;
+      const actual=+(readings.reduce((a,b)=>a+b.temp,0)/readings.length).toFixed(1);
+      const drift=+(actual-desired).toFixed(1);
+      const adj=+(-drift*4).toFixed(1);
+      rows.push({date:d.date||'?',desired,actual,drift,adj});
+      totalDrift+=drift;n++;
+    }catch(e){}
+  }
+  if(!n){box.innerHTML='<div class="calc-note">No past bakes with readings and desired temp found yet.</div>';return;}
+  const avgCorrection=+(-(totalDrift/n)*4).toFixed(1);
+  let html='<table style="width:100%;border-collapse:collapse;font-size:0.78rem;margin-top:8px"><thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid #2a3a52"><th style="padding:4px">Date</th><th>Desired</th><th>Actual</th><th>Drift</th><th>Adj</th></tr></thead><tbody>';
+  rows.slice(-10).reverse().forEach(r=>{
+    html+='<tr style="border-bottom:1px solid #1a2332"><td style="padding:4px">'+r.date+'</td><td>'+r.desired+'°</td><td>'+r.actual+'°</td><td style="color:'+(Math.abs(r.drift)>1.5?'#f0a050':'#3dd68c')+'">'+(r.drift>=0?'+':'')+r.drift+'°</td><td>'+(r.adj>=0?'+':'')+r.adj+'°</td></tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div class="corrBox">Based on your last '+n+' bake'+(n===1?'':'s')+', adjust water temp by <b>'+(avgCorrection>=0?'+':'')+avgCorrection+'°C</b> from calculated value to hit target.</div>';
+  html+='<button class="btn btn-primary" id="applyCorrBtn" style="margin-top:10px;width:100%" data-corr="'+avgCorrection+'">Apply correction</button>';
+  box.innerHTML=html;
+  const b=$('applyCorrBtn');
+  if(b)b.addEventListener('click',()=>{
+    calcWaterCorrection=parseFloat(b.dataset.corr)||0;
+    calcWater();
+    toast('✅ Correction applied: '+(calcWaterCorrection>=0?'+':'')+calcWaterCorrection+'°C');
+  });
+}
+
+function bfDurationMins(desired,pct){
+  const e=estimate(desired,pct,0);
+  if(!e)return 240;
+  if(e.mode==='bom')return Math.round((e.min+e.max)/2);
+  if(e.mode==='guide')return Math.round(e.hours*60);
+  if(e.mode==='hot')return Math.round((e.min+e.max)/2);
+  return 240;
+}
+
+function fmtClock(d){return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function fmtStep(d){
+  const today=new Date();today.setHours(0,0,0,0);
+  const dd=new Date(d);dd.setHours(0,0,0,0);
+  const diff=Math.round((dd-today)/86400000);
+  const tag=diff===0?'today':diff===1?'tomorrow':diff===-1?'yesterday':diff>0?'+'+diff+'d':diff+'d';
+  return fmtClock(d)+' '+tag;
+}
+
+function calcPlan(){
+  const out=$('planTimeline');if(!out)return;
+  const eatDate=val('planEatDate'),eatTime=val('planEatTime');
+  if(!eatDate||!eatTime||!eatTime.includes(':')){out.innerHTML='<div class="calc-note">Enter eat date and time.</div>';return;}
+  const [eh,em]=eatTime.split(':').map(Number);
+  if(isNaN(eh)||isNaN(em)){out.innerHTML='<div class="calc-note">Invalid time.</div>';return;}
+  const eat=new Date(eatDate+'T'+String(eh).padStart(2,'0')+':'+String(em).padStart(2,'0')+':00');
+  if(isNaN(eat.getTime())){out.innerHTML='<div class="calc-note">Invalid date.</div>';return;}
+  const bake=parseInt(val('planBakeTime'))||45;
+  const preheat=parseInt(val('planPreheat'))||45;
+  const cold=val('planColdRetard')==='yes';
+  const coldHrs=parseFloat(val('planColdDur'))||12;
+  const desired=parseFloat(val('planDesired'))||25;
+  const pct=parseInt(val('planStarterPct'))||20;
+  const bfMins=bfDurationMins(desired,pct);
+  const foldSets=parseInt(val('foldSets'))||4;
+  const foldIv=parseInt(val('foldInterval'))||30;
+
+  const sub=(d,mins)=>new Date(d.getTime()-mins*60000);
+  const bakeEnd=sub(eat,30);
+  const bakeStart=sub(bakeEnd,bake);
+  const preheatStart=sub(bakeStart,preheat);
+
+  let removeFromFridge,intoFridge,shapeTime,bulkEnd,mixTime,autolyse,finalProofStart;
+  const finalProofHrs=2;
+  if(cold){
+    removeFromFridge=bakeStart;
+    intoFridge=sub(removeFromFridge,coldHrs*60);
+    shapeTime=sub(intoFridge,40);
+    bulkEnd=shapeTime;
+    mixTime=sub(bulkEnd,bfMins);
+    autolyse=sub(mixTime,30);
+  }else{
+    finalProofStart=sub(bakeStart,finalProofHrs*60);
+    shapeTime=sub(finalProofStart,40);
+    bulkEnd=shapeTime;
+    mixTime=sub(bulkEnd,bfMins);
+    autolyse=sub(mixTime,30);
+  }
+
+  const folds=[];
+  for(let i=1;i<=foldSets;i++)folds.push({label:'Stretch & fold set '+i+' of '+foldSets,t:new Date(mixTime.getTime()+foldIv*i*60000)});
+
+  const steps=[
+    {icon:'🌾',label:'Autolyse / Mix ingredients',t:autolyse},
+    {icon:'🥄',label:'Add starter (BF begins)',t:mixTime},
+    ...folds.map(f=>({icon:'🤲',label:f.label,t:f.t})),
+    {icon:'✅',label:'End bulk fermentation',t:bulkEnd},
+    {icon:'🔪',label:'Shape',t:shapeTime}
+  ];
+  if(cold){
+    steps.push({icon:'❄️',label:'Into fridge (cold retard '+coldHrs+'h)',t:intoFridge});
+    steps.push({icon:'🌡️',label:'Remove from fridge',t:removeFromFridge});
+  }else{
+    steps.push({icon:'🌡️',label:'Final proof ('+finalProofHrs+'h at room temp)',t:finalProofStart});
+  }
+  steps.push({icon:'🔥',label:'Preheat oven',t:preheatStart});
+  steps.push({icon:'🍞',label:'Score & bake',t:bakeStart});
+  steps.push({icon:'⏰',label:'Ready to eat',t:eat});
+
+  steps.sort((a,b)=>a.t-b.t);
+  const now=Date.now();
+  let currentIdx=-1;
+  for(let i=0;i<steps.length;i++){if(steps[i].t.getTime()<=now)currentIdx=i;}
+  let h='<div style="display:flex;flex-direction:column;gap:2px">';
+  steps.forEach((s,i)=>{
+    const current=i===currentIdx;
+    const past=s.t.getTime()<now&&!current;
+    const cls='step-row '+(current?'current':past?'past':'future');
+    h+='<div class="'+cls+'"><span class="step-icon">'+s.icon+'</span><span class="step-label">'+s.label+'</span><span class="step-time">'+fmtStep(s.t)+'</span></div>';
+  });
+  h+='</div>';
+  out.innerHTML=h;
+  out.dataset.plan=steps.map(s=>fmtStep(s.t)+' — '+s.icon+' '+s.label).join('\n');
+}
+
+function copyPlan(){
+  const out=$('planTimeline');if(!out)return;
+  const txt=out.dataset.plan||'';
+  if(!txt){toast('⚠️ Nothing to copy','#f0a050');return;}
+  navigator.clipboard.writeText(txt).then(()=>toast('✅ Schedule copied')).catch(()=>toast('⚠️ Copy failed','#ef5050'));
+}
+
+function openPlanner(){
+  const ov=$('planOv');if(!ov)return;
+  const sync=(tgt,src)=>{const t=$(tgt),s=$(src);if(t&&s&&s.value)t.value=s.value;};
+  sync('planDesired','mixDesired');
+  sync('planStarterPct','starterPct');
+  sync('planColdRetard','coldRetard');
+  if(!val('planEatDate')){const d=new Date();d.setDate(d.getDate()+1);$('planEatDate').value=d.toISOString().slice(0,10);}
+  if(!val('planEatTime'))$('planEatTime').value='18:00';
+  calcPlan();
+  ov.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closePlanner(){$('planOv').classList.remove('open');document.body.style.overflow='';}
+
+function openCalc(){
+  const pf=(tgt,src)=>{const t=$(tgt),s=$(src);if(t&&s&&!t.value&&s.value)t.value=s.value;};
+  pf('c_wtLevain','starterTemp');
+  pf('c_wtFlour','flourTemp');
+  pf('c_wtRoom','roomTemp');
+  $('calcOv').classList.add('open');
+  document.body.style.overflow='hidden';
+  calcRecipe();calcWater();renderLearn();renderAdvisor();
+}
+function closeCalc(){$('calcOv').classList.remove('open');document.body.style.overflow='';}
+function renderAdvisor(){
+  const box=$('advisorOut');if(!box)return;
+  const roomT=gn('roomTemp');
+  const waterP=numF('c_waterPct');
+  const saltP=numF('c_saltPct');
+  const f2p=numF('c_f2p'),f3p=numF('c_f3p');
+  const wg=f2p+f3p;
+  const card=(color,icon,title,body)=>{
+    const bg={blue:'#1a2a3a',orange:'#3a2a1a',green:'#1a3a2a'}[color];
+    const fg={blue:'#4f9eff',orange:'#f0a050',green:'#3dd68c'}[color];
+    return '<div style="background:'+bg+';color:'+fg+'"><b>'+icon+' '+title+'</b><div style="color:#dbe4ef;margin-top:4px;font-size:0.8rem">'+body+'</div></div>';
+  };
+  let h='';
+  if(roomT!==null){
+    if(roomT>24)h+=card('orange','🌡️','Warm conditions','Consider reducing hydration by 2–3% — warm dough absorbs water faster and becomes stickier.');
+    else if(roomT<19)h+=card('blue','❄️','Cool conditions','You may increase hydration by 2–3% — cool dough is stiffer and easier to handle.');
+  }
+  if(waterP>0){
+    if(waterP>82)h+=card('orange','💧','High hydration detected','Requires strong gluten development and confident shaping technique.');
+    else if(waterP<68)h+=card('green','🫓','Low hydration','Dough will be stiff — good for beginners.');
+  }
+  if(wg>20)h+=card('orange','🌾','High whole grain %','Fermentation will be faster — reduce BF time by ~10–15%. Expect denser crumb.');
+  else if(wg>=10)h+=card('blue','🌾','Moderate whole grain','Slight fermentation boost — monitor dough closely near end of BF.');
+  else if(wg===0)h+=card('green','🌾','100% white flour','Most predictable fermentation.');
+  if(saltP>0){
+    if(saltP<1.5)h+=card('orange','🧂','Low salt','Slows gluten development and speeds fermentation.');
+    else if(saltP>2.5)h+=card('orange','🧂','High salt','Slows fermentation — may need longer BF.');
+  }
+  if(!h)h='<div class="calc-note">Enter recipe + environment values to see advice.</div>';
+  box.innerHTML=h;
+}
+
+function switchCalcTab(t){
+  ['recipe','water','advisor'].forEach(n=>{
+    const tb=$('calcTab-'+n),pn=$('calcPane-'+n);
+    if(tb)tb.classList.toggle('active',n===t);
+    if(pn)pn.style.display=n===t?'':'none';
+  });
+}
+
+wire(['c_target','c_scale','c_levainPct','c_waterPct','c_saltPct','c_f1n','c_f1p','c_f2n','c_f2p','c_f3n','c_f3p','c_i1n','c_i1p','c_i2n','c_i2p','c_i3n','c_i3p'],()=>{calcRecipe();renderAdvisor();});
+wire(['roomTemp'],renderAdvisor);
+wire(['c_wtDesired','c_wtFriction','c_wtLevain','c_wtFlour','c_wtRoom'],calcWater);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('calcOv').classList.contains('open'))closeCalc();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('planOv')&&$('planOv').classList.contains('open'))closePlanner();});
+wire(['planEatDate','planEatTime','planColdRetard','planDesired','planStarterPct','planColdDur','planBakeTime','planPreheat'],calcPlan);
+wire(['planColdRetard','planStarterPct'],calcPlan,'change');
+$('planCopyBtn').addEventListener('click',copyPlan);
+
+setDateToday();
+setBfNow();
+buildDropdown();
+render();
+</script>
+</body>
+</html>
