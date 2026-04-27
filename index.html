@@ -390,7 +390,8 @@ textarea{
     </div>
     <div class="calc-tb">
       <button class="calc-tab active" id="calcTab-recipe" onclick="switchCalcTab('recipe')">📐 Recipe</button>
-      <button class="calc-tab" id="calcTab-water" onclick="switchCalcTab('water')">🌡️ Water Temp</button>
+      <button class="calc-tab" id="calcTab-volume" onclick="switchCalcTab('volume')">📏 Volume</button>
+      <button class="calc-tab" id="calcTab-water" onclick="switchCalcTab('water')">🌡️ Water</button>
       <button class="calc-tab" id="calcTab-advisor" onclick="switchCalcTab('advisor')">💡 Advisor</button>
     </div>
     <div class="calc-bd">
@@ -441,6 +442,35 @@ textarea{
 
         <div class="calc-sh">Results</div>
         <div class="calc-grid panels" id="calcResults"></div>
+      </div>
+
+      <!-- Volume tab -->
+      <div id="calcPane-volume" style="display:none">
+        <div class="calc-sh">Densities (mL per g)</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">Override per ingredient. Defaults: flour ≈1.85, water 1.00, salt ≈0.83, levain ≈1.10.</div>
+        <div class="calc-r2">
+          <div><label id="cv_l_f1">Flour 1</label><input type="number" step="0.01" id="cv_d_f1" value="1.85"/></div>
+          <div><label id="cv_l_f2">Flour 2</label><input type="number" step="0.01" id="cv_d_f2" value="1.85"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label id="cv_l_f3">Flour 3</label><input type="number" step="0.01" id="cv_d_f3" value="1.85"/></div>
+          <div><label>Water</label><input type="number" step="0.01" id="cv_d_water" value="1.00"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label>Salt</label><input type="number" step="0.01" id="cv_d_salt" value="0.83"/></div>
+          <div><label>Levain</label><input type="number" step="0.01" id="cv_d_lev" value="1.10"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label id="cv_l_i1">Inclusion 1</label><input type="number" step="0.01" id="cv_d_i1" value="1.00"/></div>
+          <div><label id="cv_l_i2">Inclusion 2</label><input type="number" step="0.01" id="cv_d_i2" value="1.00"/></div>
+        </div>
+        <div class="calc-r2">
+          <div><label id="cv_l_i3">Inclusion 3</label><input type="number" step="0.01" id="cv_d_i3" value="1.00"/></div>
+          <div></div>
+        </div>
+        <div class="calc-sh">Volumes</div>
+        <div id="cv_results"></div>
+        <div class="calc-note">Volume = weight × density (mL/g). Numbers are estimates — actual volume varies with packing, hydration, and ingredient brand.</div>
       </div>
 
       <!-- Water temp tab -->
@@ -909,12 +939,17 @@ function interpL(pct,t){
 }
 
 // Estimation
-function estimate(avg,pct,bfMins){
+function estimate(avg,pct,bfMins,coldRetard){
   if(bfMins===null)return null;
   if(avg>32)return{mode:'danger',txt:'Over 32°C — not recommended'};
-  if(avg>28)return{mode:'hot',warn:'Temp above 28°C — gluten degrades rapidly!',min:bfMins+120,max:bfMins+210};
-  if(avg>=25.5)return{mode:'bom',min:bfMins+210,mid:bfMins+240,max:bfMins+270,rise:'25–35%'};
-  if(avg>=18){const g=interpT(avg);const low=pct!==20?interpL(pct,Math.min(avg,23)):null;return{mode:'guide',hours:g.hours,rise:g.rise,done:bfMins+g.hours*60,low,pct};}
+  const tLow=Math.max(19,Math.min(avg,23));
+  const ref=interpL(20,tLow),cur=interpL(pct,tLow);
+  const pctMult=(ref&&cur&&ref.r100>0)?+(cur.r100/ref.r100).toFixed(3):1;
+  const noRetardMult=coldRetard?1:+(1+noRetardBonus(avg)/100).toFixed(3);
+  const totalMult=pctMult*noRetardMult;
+  if(avg>28)return{mode:'hot',warn:'Temp above 28°C — gluten degrades rapidly!',min:bfMins+Math.round(120*totalMult),max:bfMins+Math.round(210*totalMult),pctMult,noRetardMult};
+  if(avg>=25.5)return{mode:'bom',min:bfMins+Math.round(210*totalMult),mid:bfMins+Math.round(240*totalMult),max:bfMins+Math.round(270*totalMult),rise:'25–35%',pctMult,noRetardMult};
+  if(avg>=18){const g=interpT(avg);const low=pct!==20?interpL(pct,tLow):null;const hours=+(g.hours*totalMult).toFixed(1);return{mode:'guide',hours,rise:g.rise,done:bfMins+Math.round(hours*60),low,pct,pctMult,noRetardMult};}
   return{mode:'cold',txt:'Under 18°C — outside table range'};
 }
 
@@ -1012,6 +1047,13 @@ function getFields(){
     calc:getCalc()};
 }
 
+function setNextProbe(){
+  const sel=$('probeIn');if(!sel)return;
+  const nums=entries.filter(e=>!e.isFold&&e.probe).map(e=>{const m=String(e.probe).match(/(\d+)/);return m?parseInt(m[1]):0;}).filter(n=>n>0);
+  const next=nums.length?Math.min(Math.max(...nums)+1,20):1;
+  sel.value=String(next);
+}
+
 function setFields(d){
   if(!d)return;
   entries=d.entries||[];envLog=d.envLog||[];
@@ -1026,6 +1068,7 @@ function setFields(d){
   set('mixDesired',d.mixDesired);set('mixFriction',d.mixFriction||'0');
   set('planEatDate',d.planEatDate);set('planEatTime',d.planEatTime);set('planColdDur',d.planColdDur||'12');
   setCalc(d.calc);
+  setNextProbe();
 }
 
 function buildDropdown(){
@@ -1243,7 +1286,7 @@ function render(){
   const effectiveAvg=(avg!==null&&curRoomTemp!==null)
     ?+(avg+(curRoomTemp-avg)*0.15).toFixed(1):avg;
 
-  const est=effectiveAvg&&bfMins!==null?estimate(effectiveAvg,pct,bfMins):null;
+  const est=effectiveAvg&&bfMins!==null?estimate(effectiveAvg,pct,bfMins,val('coldRetard')==='yes'):null;
 
   // Summaries
   const sd=val('sessionDate'),sn=val('sessionName');
@@ -1267,18 +1310,24 @@ function render(){
       if(effectiveAvg!==avg)s+=stat('Room-Adjusted Avg',effectiveAvg+' °C','#4f9eff');
       else s+=stat('Avg Dough Temp',avg+' °C','#4f9eff');
       let src='';
+      const adjLabel=e=>{
+        const p=[];
+        if(e.pctMult&&e.pctMult!==1)p.push(((e.pctMult-1)*100>=0?'+':'')+Math.round((e.pctMult-1)*100)+'% '+pct+'% starter');
+        if(e.noRetardMult&&e.noRetardMult!==1)p.push('+'+Math.round((e.noRetardMult-1)*100)+'% room-temp proof');
+        return p.length?' · adj: '+p.join(', '):'';
+      };
       if(est?.mode==='bom'){
         s+=stat('Est. Window',toHHMM(est.min)+' – '+toHHMM(est.max),'#3dd68c');
         s+=stat('Target % Rise',est.rise,'#facc15');
-        s+=stat('Duration','3.5 – 4.5 hrs','#a78bfa');
-        src='📊 Bulk-O-Matic System (25.5–28°C, Tartine method)';
+        s+=stat('Duration',((est.min-bfMins)/60).toFixed(1)+' – '+((est.max-bfMins)/60).toFixed(1)+' hrs','#a78bfa');
+        src='📊 Bulk-O-Matic System (25.5–28°C, Tartine method)'+adjLabel(est);
         setSum('sum-est',avg+'°C · '+toHHMM(est.min)+'–'+toHHMM(est.max));
       }else if(est?.mode==='guide'){
         s+=stat('Est. Duration',est.hours+' hrs','#a78bfa');
         s+=stat('Est. Done',toHHMM(est.done),'#3dd68c');
         s+=stat('Target % Rise',est.rise+'%','#facc15');
         if(est.pct!==20&&est.low)s+=stat(est.pct+'% (75% rise)',est.low.r75+'h → '+toHHMM(bfMins+est.low.r75*60),'#f0a050');
-        src='📊 Dough Temping Guide 2024 (20% starter, 75% hydration)';
+        src='📊 Dough Temping Guide 2024 (20% starter, 75% hydration)'+adjLabel(est);
         setSum('sum-est',avg+'°C · done ~'+toHHMM(est.done));
       }else if(est?.mode==='hot'){
         s+=stat('Est. Window',toHHMM(est.min)+' – '+toHHMM(est.max),'#f0a050');
@@ -1439,7 +1488,7 @@ function updateChart(avg,baseMins,bfMins,est){
 }
 
 // Actions
-function del(i){entries.splice(i,1);render();}
+function del(i){entries.splice(i,1);setNextProbe();render();}
 function delEnv(i){envLog.splice(i,1);render();}
 
 // Events
@@ -1481,7 +1530,7 @@ $('envNowBtn').addEventListener('click',()=>setNow('envTime'));
 
 $('resetBtn').addEventListener('click',()=>{
   if(!confirm('Reset all readings?'))return;
-  entries=[];envLog=[];render();
+  entries=[];envLog=[];setNextProbe();render();
 });
 
 function autoSaveSession(){
@@ -1553,6 +1602,7 @@ $('newBtn').addEventListener('click',()=>{
   const mf=$('mixFriction');if(mf)mf.value='0';
   setDateToday();
   setBfNow();
+  setNextProbe();
   const sel=$('sessionList');if(sel)sel.value='';
   render();
   toast('New session started');
@@ -1571,7 +1621,8 @@ $('bakeNotes').addEventListener('input',()=>setSum('sum-notes',(val('bakeNotes')
 const CALC_IDS=['c_target','c_scale','c_levainPct','c_waterPct','c_saltPct',
   'c_f1n','c_f1p','c_f2n','c_f2p','c_f3n','c_f3p',
   'c_i1n','c_i1p','c_i2n','c_i2p','c_i3n','c_i3p',
-  'c_wtDesired','c_wtFriction','c_wtLevain','c_wtFlour','c_wtRoom'];
+  'c_wtDesired','c_wtFriction','c_wtLevain','c_wtFlour','c_wtRoom',
+  'cv_d_f1','cv_d_f2','cv_d_f3','cv_d_water','cv_d_salt','cv_d_lev','cv_d_i1','cv_d_i2','cv_d_i3'];
 
 function getCalc(){const o={};CALC_IDS.forEach(i=>{const el=$(i);if(el)o[i]=el.value;});return o;}
 function setCalc(c){if(!c)return;CALC_IDS.forEach(i=>{const el=$(i);if(el&&c[i]!==undefined)el.value=c[i];});}
@@ -1651,6 +1702,8 @@ function calcRecipe(){
   right+='</div>';
 
   const rc=$('calcResults');if(rc)rc.innerHTML=left+mid+right;
+  window.calcWeights={f1n,f2n,f3n,i1n,i2n,i3n,f1w,f2w,f3w,watW,salW,lvTotal,i1w,i2w,i3w,f2p,f3p,i1p,i2p,i3p};
+  if($('calcPane-volume')&&$('calcPane-volume').style.display!=='none')calcVolume();
 }
 
 let calcWaterCorrection=0;
@@ -1706,8 +1759,8 @@ function renderLearn(){
   });
 }
 
-function bfDurationMins(desired,pct){
-  const e=estimate(desired,pct,0);
+function bfDurationMins(desired,pct,coldRetard){
+  const e=estimate(desired,pct,0,coldRetard);
   if(!e)return 240;
   if(e.mode==='bom')return Math.round((e.min+e.max)/2);
   if(e.mode==='guide')return Math.round(e.hours*60);
@@ -1738,7 +1791,7 @@ function calcPlan(){
   const coldHrs=parseFloat(val('planColdDur'))||12;
   const desired=parseFloat(val('planDesired'))||25;
   const pct=parseInt(val('planStarterPct'))||20;
-  const bfMins=bfDurationMins(desired,pct);
+  const bfMins=bfDurationMins(desired,pct,cold);
   const foldSets=parseInt(val('foldSets'))||4;
   const foldIv=parseInt(val('foldInterval'))||30;
 
@@ -1864,16 +1917,51 @@ function renderAdvisor(){
 }
 
 function switchCalcTab(t){
-  ['recipe','water','advisor'].forEach(n=>{
+  ['recipe','volume','water','advisor'].forEach(n=>{
     const tb=$('calcTab-'+n),pn=$('calcPane-'+n);
     if(tb)tb.classList.toggle('active',n===t);
     if(pn)pn.style.display=n===t?'':'none';
   });
+  if(t==='volume')calcVolume();
+}
+
+function calcVolume(){
+  const out=$('cv_results');if(!out)return;
+  const w=window.calcWeights;
+  if(!w){out.innerHTML='<div class="calc-note">Fill in the Recipe tab first.</div>';return;}
+  const scale=numF('c_scale')||1;
+  const lbl=(id,v)=>{const el=$(id);if(el)el.textContent=v;};
+  lbl('cv_l_f1',w.f1n||'Flour 1');lbl('cv_l_f2',w.f2n||'Flour 2');lbl('cv_l_f3',w.f3n||'Flour 3');
+  lbl('cv_l_i1',w.i1n||'Inclusion 1');lbl('cv_l_i2',w.i2n||'Inclusion 2');lbl('cv_l_i3',w.i3n||'Inclusion 3');
+  const d=(id,def)=>{const v=numF(id);return v>0?v:def;};
+  const items=[
+    {n:w.f1n||'Flour 1',wt:w.f1w,d:d('cv_d_f1',1.85),show:true},
+    {n:w.f2n||'Flour 2',wt:w.f2w,d:d('cv_d_f2',1.85),show:w.f2p>0},
+    {n:w.f3n||'Flour 3',wt:w.f3w,d:d('cv_d_f3',1.85),show:w.f3p>0},
+    {n:'Water',wt:w.watW,d:d('cv_d_water',1.00),show:true},
+    {n:'Salt',wt:w.salW,d:d('cv_d_salt',0.83),show:true},
+    {n:'Levain',wt:w.lvTotal,d:d('cv_d_lev',1.10),show:w.lvTotal>0},
+    {n:w.i1n||'Inclusion 1',wt:w.i1w,d:d('cv_d_i1',1.00),show:w.i1p>0},
+    {n:w.i2n||'Inclusion 2',wt:w.i2w,d:d('cv_d_i2',1.00),show:w.i2p>0},
+    {n:w.i3n||'Inclusion 3',wt:w.i3w,d:d('cv_d_i3',1.00),show:w.i3p>0}
+  ];
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let html='<div class="calc-pn"><div class="calc-pn-t">Ingredient Volumes</div>';
+  let tV=0,tW=0;
+  items.filter(it=>it.show).forEach(it=>{
+    const wt=it.wt*scale,vol=wt*it.d;
+    tV+=vol;tW+=wt;
+    html+='<div class="calc-ing"><span class="calc-ing-n">'+esc(it.n)+'</span><span class="calc-ing-p">'+wt.toFixed(1)+' g</span><span class="calc-ing-w">'+vol.toFixed(0)+' mL</span></div>';
+  });
+  html+='<div class="calc-ing tot"><span class="calc-ing-n">Total</span><span class="calc-ing-p">'+tW.toFixed(0)+' g</span><span class="calc-ing-w">'+tV.toFixed(0)+' mL</span></div>';
+  html+='</div>';
+  out.innerHTML=html;
 }
 
 wire(['c_target','c_scale','c_levainPct','c_waterPct','c_saltPct','c_f1n','c_f1p','c_f2n','c_f2p','c_f3n','c_f3p','c_i1n','c_i1p','c_i2n','c_i2p','c_i3n','c_i3p'],()=>{calcRecipe();renderAdvisor();});
 wire(['roomTemp'],renderAdvisor);
 wire(['c_wtDesired','c_wtFriction','c_wtLevain','c_wtFlour','c_wtRoom'],calcWater);
+wire(['cv_d_f1','cv_d_f2','cv_d_f3','cv_d_water','cv_d_salt','cv_d_lev','cv_d_i1','cv_d_i2','cv_d_i3'],calcVolume);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('calcOv').classList.contains('open'))closeCalc();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('planOv')&&$('planOv').classList.contains('open'))closePlanner();});
 wire(['planEatDate','planEatTime','planColdRetard','planDesired','planStarterPct','planColdDur','planBakeTime','planPreheat'],calcPlan);
