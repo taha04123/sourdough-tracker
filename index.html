@@ -1702,7 +1702,10 @@ function calcRecipe(){
   right+='</div>';
 
   const rc=$('calcResults');if(rc)rc.innerHTML=left+mid+right;
-  window.calcWeights={f1n,f2n,f3n,i1n,i2n,i3n,f1w,f2w,f3w,watW,salW,lvTotal,i1w,i2w,i3w,f2p,f3p,i1p,i2p,i3p};
+  window.calcWeights={f1n,f2n,f3n,i1n,i2n,i3n,
+    f1w:mdF1,f2w:mdF2,f3w:mdF3,watW:mdWater,salW:mdSalt,lvTotal:mdLev,
+    i1w:mdI1,i2w:mdI2,i3w:mdI3,
+    f2p,f3p,i1p,i2p,i3p};
   if($('calcPane-volume')&&$('calcPane-volume').style.display!=='none')calcVolume();
 }
 
